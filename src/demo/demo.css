@@ -704,6 +704,12 @@ kbd {
 
 .drawbar button {
     box-shadow: var(--shadow);
+}
+
+/* The surface for the bar's plain buttons; Finish keeps button.primary's gradient, which a plain
+   `.drawbar button` background would override (same specificity, later rule) and leave it white on
+   white until hovered. */
+.drawbar button:not(.primary) {
     background: var(--surface);
 }
 
