@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>METOC glyph sheet</title>
+        <style>
+            body { margin: 12px; font: 12px system-ui, sans-serif; background: #fff; color: #111; }
+            #grid { display: grid; grid-template-columns: repeat(auto-fill, 200px); gap: 8px; }
+            .cell { border: 1px solid #ddd; border-radius: 6px; padding: 6px; }
+            .cell svg { display: block; margin: 0 auto 4px; background: #fafafa; }
+            .code { font-weight: 600; }
+        </style>
+    </head>
+    <body>
+        <div id="grid"></div>
+        <script type="module" src="/src/demo/sheet.ts"></script>
+    </body>
+</html>

@@ -1,0 +1,11 @@
+node_modules/
+dist/
+build/
+.playwright-out/
+*.log
+.DS_Store
+public/maplibre-gl-worker.mjs
+public/maplibre-gl-shared.mjs
+.idea/
+release/
+demo-addons.local.json

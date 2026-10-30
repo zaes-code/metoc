@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>METOC viewer</title>
+        <style>
+            html, body { margin: 0; height: 100%; font: 13px system-ui, sans-serif; }
+            #map { position: absolute; inset: 0; }
+            .note { position: absolute; top: 12px; right: 12px; z-index: 1; max-width: 320px; padding: 10px 12px; border-radius: 8px; background: rgba(255, 255, 255, 0.92); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2); }
+            .note b { display: block; margin-bottom: 4px; }
+        </style>
+    </head>
+    <body>
+        <div id="map"></div>
+        <div class="note"><b>Display only</b>A surface analysis drawn with <code>@zaes/metoc</code> and its OpenLayers renderer, without the editor.</div>
+        <script type="module" src="/src/demo/viewer.ts"></script>
+    </body>
+</html>

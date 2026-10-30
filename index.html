@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>METOC Graphics</title>
+        <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231565c0'/%3E%3Cpath d='M32 0v32H0z' fill='%23d32f2f'/%3E%3C/svg%3E" />
+        <meta name="description" content="MIL-STD-2525E Appendix M weather fronts, pressure lines, winds and isopleths on OpenLayers and MapLibre." />
+    </head>
+    <body>
+        <div id="app">
+            <header class="topbar">
+                <div class="brand">
+                    <span class="brand-mark" aria-hidden="true"></span>
+                    <div>
+                        <h1>METOC Graphics</h1>
+                        <p>MIL-STD-2525E Change 1 · Appendix M · symbol sets 45 and 46</p>
+                    </div>
+                </div>
+                <div class="engine" role="group" aria-label="Map engine">
+                    <button type="button" data-engine="openlayers" data-icon="layers">OpenLayers</button>
+                    <!-- One MapLibre, flat or on terrain. -->
+                    <span class="engine-group" role="group" aria-label="MapLibre">
+                        <span class="engine-name" data-icon="map">MapLibre</span>
+                        <button type="button" data-engine="maplibre" aria-label="MapLibre 2D">2D</button>
+                        <span class="engine-sep" aria-hidden="true">|</span>
+                        <button type="button" data-engine="maplibre3d" aria-label="MapLibre 3D">3D</button>
+                    </span>
+                </div>
+                <div class="actions">
+                    <button type="button" id="undo" class="icon-only" title="Undo (Ctrl+Z)" aria-label="Undo" data-icon="undo" disabled></button>
+                    <button type="button" id="redo" class="icon-only" title="Redo (Ctrl+Y)" aria-label="Redo" data-icon="redo" disabled></button>
+                    <span class="gallery-group">
+                        <select id="gallery-group" aria-label="Sample gallery group"></select>
+                        <button type="button" id="gallery" class="primary" data-icon="gallery">Sample gallery</button>
+                    </span>
+                    <span id="addon-tools" class="addon-tools"></span>
+                    <button type="button" id="export" data-icon="export">Export</button>
+                    <label class="button" for="import-file" data-icon="import">Import</label>
+                    <input type="file" id="import-file" accept=".json,.geojson,application/geo+json,application/json" hidden />
+                    <button type="button" id="clear" data-icon="clear">Clear</button>
+                    <button type="button" id="settings-toggle" aria-expanded="false" aria-controls="settings" data-icon="settings">Settings</button>
+                    <button type="button" id="help-toggle" class="icon-only" aria-expanded="false" aria-controls="help" aria-label="Keyboard shortcuts" title="Keyboard shortcuts (?)" data-icon="help"></button>
+                </div>
+            </header>
+            <aside class="picker" aria-label="Graphics">
+                <input type="search" id="search" placeholder="Search graphics or codes" autocomplete="off" />
+                <div id="picker-list"></div>
+            </aside>
+            <main class="stage">
+                <div id="map"></div>
+                <!-- The map controls: zoom always, tilt and north in 3D. -->
+                <div class="map-controls" id="map-controls" role="group" aria-label="Map controls">
+                    <button type="button" id="zoom-in" data-icon="plus" title="Zoom in">Zoom in</button>
+                    <button type="button" id="zoom-out" data-icon="minus" title="Zoom out">Zoom out</button>
+                    <hr class="for-3d" />
+                    <button type="button" id="tilt-up" class="for-3d" data-icon="tilt-up" title="Tilt up, toward the horizon">Tilt up</button>
+                    <button type="button" id="tilt-down" class="for-3d" data-icon="tilt-down" title="Tilt down, toward straight down">Tilt down</button>
+                    <hr class="for-3d" />
+                    <button type="button" id="reset-north" class="for-3d" data-icon="north" title="North up">North up</button>
+                </div>
+                <div id="status" role="status" aria-live="polite"></div>
+                <div class="drawbar" id="drawbar" hidden>
+                    <button type="button" id="draw-finish" class="primary" data-icon="check">Finish</button>
+                    <button type="button" id="draw-undo-point" data-icon="backspace">Remove last point</button>
+                    <button type="button" id="draw-cancel" data-icon="close">Cancel</button>
+                </div>
+                <div class="panels">
+                    <section id="settings" class="panel settings" hidden aria-label="Settings">
+                        <h2>Settings</h2>
+                        <label id="theme-label">Appearance</label>
+                        <div class="segmented" role="group" aria-labelledby="theme-label" id="theme">
+                            <button type="button" data-theme-choice="system" data-icon="monitor">System</button>
+                            <button type="button" data-theme-choice="light" data-icon="sun">Light</button>
+                            <button type="button" data-theme-choice="dark" data-icon="moon">Dark</button>
+                        </div>
+                        <label>Line width <output id="line-width-out"></output><input type="range" id="line-width" min="1" max="5" step="0.5" /></label>
+                        <label>Pip size <output id="pip-size-out"></output><input type="range" id="pip-size" min="5" max="20" step="1" /></label>
+                        <label id="point-size-label">Point size</label>
+                        <div class="segmented" role="group" aria-labelledby="point-size-label" id="point-size" title="How large point graphics draw unless one has its own size">
+                            <button type="button" data-point-size="small">Small</button>
+                            <button type="button" data-point-size="medium">Medium</button>
+                            <button type="button" data-point-size="large">Large</button>
+                        </div>
+                        <label for="point-shrink" title="Point symbols are full size at this map scale and closer in, and smaller as the map zooms out past it (flat maps)">Shrink points beyond</label>
+                        <select id="point-shrink">
+                            <option value="">Never</option>
+                            <option value="1000000">1:1,000,000</option>
+                            <option value="2500000">1:2,500,000</option>
+                            <option value="5000000">1:5,000,000</option>
+                            <option value="10000000">1:10,000,000</option>
+                            <option value="25000000">1:25,000,000</option>
+                        </select>
+                        <label class="check" title="In 3D: each point symbol stands upright on a line down to its location, clear of the terrain">
+                            <input type="checkbox" id="leader-lines" /> Leader lines (3D)
+                        </label>
+                        <p class="hint">Point symbols stand on a line to their location, clear of the terrain. Off, they lie on the ground.</p>
+                        <label class="check"><input type="checkbox" id="smooth" /> Curved lines</label>
+                        <label class="check" title="Values, heights and date-times; a symbol's own text (H, L, a station plot's figures) stays">
+                            <input type="checkbox" id="show-labels" /> Labels
+                        </label>
+                        <label for="label-color">Label colour</label>
+                        <div class="swatches" title="The colour of every label; Standard draws each in its graphic's colour">
+                            <input type="color" id="label-color" />
+                            <button type="button" id="label-color-reset">Standard</button>
+                        </div>
+                        <label for="label-font">Label font</label>
+                        <select id="label-font">
+                            <option value="">Sans-serif</option>
+                            <option value='"Arial Narrow", "Roboto Condensed", sans-serif'>Condensed</option>
+                            <option value="Georgia, serif">Serif</option>
+                            <option value="Consolas, monospace">Monospace</option>
+                        </select>
+                        <label class="check" title="A rotate handle on a selected point symbol; the standard draws them upright">
+                            <input type="checkbox" id="point-rotation" /> Turn point symbols
+                        </label>
+                        <label class="check" title="A point drawn or dragged near another graphic's point lands on it, so lines meet exactly">
+                            <input type="checkbox" id="snap" /> Snap to points
+                        </label>
+                        <label for="handle-color">Handle colour</label>
+                        <div class="swatches">
+                            <input type="color" id="handle-color" />
+                            <button type="button" id="handle-color-reset">Default</button>
+                        </div>
+                        <label for="line-color">Default line colour</label>
+                        <div class="swatches" title="The colour of every graphic the standard draws black, and nothing else">
+                            <input type="color" id="line-color" />
+                            <button type="button" id="line-color-reset">Standard</button>
+                        </div>
+                        <p class="hint" id="line-color-hint">Only graphics the standard draws black.</p>
+                        <label>Basemap opacity <output id="opacity-out"></output><input type="range" id="opacity" min="0" max="1" step="0.05" /></label>
+                    </section>
+                    <section id="help" class="panel help" hidden aria-label="Keyboard shortcuts">
+                        <h2>Keyboard shortcuts</h2>
+                        <dl class="keys">
+                            <dt><kbd>Click</kbd></dt><dd>Add a point while drawing</dd>
+                            <dt><kbd>Double-click</kbd> <kbd>Enter</kbd></dt><dd>Finish drawing</dd>
+                            <dt><kbd>Backspace</kbd></dt><dd>Remove the last point while drawing</dd>
+                            <dt><kbd>Esc</kbd></dt><dd>Cancel drawing, or deselect</dd>
+                            <dt><kbd>Delete</kbd></dt><dd>Delete the selected graphic</dd>
+                            <dt><kbd>Alt</kbd>+<kbd>Click</kbd></dt><dd>Remove a point</dd>
+                            <dt><kbd>&larr;</kbd><kbd>&uarr;</kbd><kbd>&rarr;</kbd><kbd>&darr;</kbd></dt><dd>Nudge 1 px (<kbd>Shift</kbd>: 10 px)</dd>
+                            <dt><kbd>Ctrl</kbd>+<kbd>D</kbd></dt><dd>Duplicate</dd>
+                            <dt><kbd>Ctrl</kbd>+<kbd>Z</kbd></dt><dd>Undo</dd>
+                            <dt><kbd>Ctrl</kbd>+<kbd>Y</kbd></dt><dd>Redo</dd>
+                            <dt><kbd>?</kbd></dt><dd>Show or hide this list</dd>
+                        </dl>
+                    </section>
+                </div>
+                <!-- The selected graphic, at the bottom right: the top right is the map controls' and the toolbar panels'. -->
+                <div class="panels bottom">
+                    <section id="properties" class="panel properties" hidden aria-label="Selected graphic"></section>
+                </div>
+            </main>
+        </div>
+        <script type="module" src="/src/demo/main.ts"></script>
+    </body>
+</html>

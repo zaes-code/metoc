@@ -1,0 +1,79 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "lib": [
+      "es2020",
+      "dom",
+      "dom.iterable"
+    ],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "types": [
+      "vite/client",
+      "vitest/globals",
+      "node"
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@zaes/symbology-engine": [
+        "../symbology-engine/packages/engine/src/index.ts",
+        "node_modules/@zaes/symbology-engine"
+      ],
+      "@zaes/symbology-engine/openlayers": [
+        "../symbology-engine/packages/engine/src/openlayers/index.ts",
+        "node_modules/@zaes/symbology-engine/dist/types/openlayers/index.d.ts"
+      ],
+      "@zaes/symbology-engine/maplibre": [
+        "../symbology-engine/packages/engine/src/maplibre/index.ts",
+        "node_modules/@zaes/symbology-engine/dist/types/maplibre/index.d.ts"
+      ],
+      "@zaes/symbology-editor": [
+        "../symbology-engine/packages/engine-editor/src/index.ts",
+        "node_modules/@zaes/symbology-editor"
+      ],
+      "@zaes/metoc": [
+        "packages/metoc/src/index.ts"
+      ],
+      "@zaes/metoc/openlayers": [
+        "packages/metoc/src/openlayers/index.ts"
+      ],
+      "@zaes/metoc/maplibre": [
+        "packages/metoc/src/maplibre/index.ts"
+      ],
+      "@zaes/metoc/editor": [
+        "packages/metoc/src/editor/index.ts"
+      ],
+      "@demo/addons": [
+        "src/demo/addonsNone.ts"
+      ],
+      "ol": [
+        "node_modules/ol"
+      ],
+      "ol/*": [
+        "node_modules/ol/*"
+      ],
+      "maplibre-gl": [
+        "node_modules/maplibre-gl"
+      ],
+      "maplibre-gl/*": [
+        "node_modules/maplibre-gl/*"
+      ],
+      "geojson": [
+        "node_modules/@types/geojson"
+      ]
+    }
+  },
+  "include": [
+    "src",
+    "packages/*/src",
+    "vite.config.mts"
+  ]
+}

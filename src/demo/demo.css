@@ -1,0 +1,750 @@
+:root {
+    --bg: #f4f6f8;
+    --surface: #ffffff;
+    --surface-2: #eef1f4;
+    --border: #d6dbe1;
+    --text: #18202a;
+    --muted: #5b6673;
+    --accent: #1565c0;
+    --accent-soft: #e3eefb;
+    --danger: #c62828;
+    --shadow: 0 6px 24px rgba(16, 24, 40, 0.14);
+    --thumb-bg: #ffffff;
+    --map-bg: #dfe6ec;
+    color-scheme: light;
+}
+
+/* The page resolves System / Light / Dark itself and sets data-theme, so the map, the library's
+   palette and these colours always agree; nothing here reads prefers-color-scheme. */
+:root[data-theme='dark'] {
+    --bg: #11161c;
+    --surface: #1a2129;
+    --surface-2: #232c36;
+    --border: #313c48;
+    --text: #e6ebf0;
+    --muted: #9aa6b2;
+    --accent: #64a8f0;
+    --accent-soft: #1d3550;
+    --danger: #ef6c6c;
+    --shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+    --thumb-bg: #2a323c;
+    --map-bg: #1c2229;
+    color-scheme: dark;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+/* An author display rule beats the hidden attribute's; this puts hidden back in charge, so a
+   flex bar or panel given `hidden` really goes. */
+[hidden] {
+    display: none !important;
+}
+
+html,
+body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+#app {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    grid-template-rows: auto 1fr;
+    height: 100vh;
+}
+
+.topbar {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-right: auto;
+}
+
+.brand-mark {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #1565c0 0 50%, #d32f2f 50% 100%);
+}
+
+.brand h1 {
+    margin: 0;
+    font-size: 17px;
+}
+
+.brand p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+button,
+.button {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1;
+    color: var(--text);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 8px 14px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+        background 0.15s,
+        border-color 0.15s,
+        transform 0.1s,
+        box-shadow 0.15s;
+}
+
+button:hover:not(:disabled),
+.button:hover {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+}
+
+button:active:not(:disabled),
+.button:active {
+    transform: translateY(1px);
+}
+
+button:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+button.primary {
+    background: linear-gradient(135deg, var(--accent), #7b4dff);
+    border-color: transparent;
+    color: #fff;
+    box-shadow: 0 2px 10px rgba(21, 101, 192, 0.35);
+}
+
+button.primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, var(--accent), #7b4dff);
+    box-shadow: 0 4px 16px rgba(123, 77, 255, 0.45);
+}
+
+button.icon-only {
+    padding: 8px;
+}
+
+button.danger {
+    color: var(--danger);
+}
+
+button.danger:hover:not(:disabled) {
+    border-color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+
+.icon {
+    flex: none;
+}
+
+button:focus-visible,
+.button:focus-visible,
+input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.engine,
+.segmented {
+    display: inline-flex;
+    gap: 2px;
+    padding: 3px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+}
+
+.engine button,
+.segmented button {
+    border: 0;
+    background: transparent;
+    padding: 6px 12px;
+}
+
+/* MapLibre's two modes in one stop of the switch: "MapLibre 2D | 3D". */
+.engine-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding-left: 10px;
+}
+
+.engine-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-right: 2px;
+}
+
+.engine-group button {
+    padding: 6px 9px;
+}
+
+.engine-sep {
+    color: var(--muted);
+}
+
+.engine button[aria-pressed='true'],
+.segmented button[aria-pressed='true'] {
+    background: var(--surface);
+    color: var(--accent);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+}
+
+.actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.picker {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 10px;
+}
+
+.picker input[type='search'] {
+    width: 100%;
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface-2);
+    color: var(--text);
+    font: inherit;
+    margin-bottom: 8px;
+}
+
+.picker h3 {
+    margin: 14px 4px 6px;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.set-heading {
+    margin: 16px 4px 4px;
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 0.02em;
+}
+
+.picker details {
+    margin-bottom: 4px;
+}
+
+.picker summary {
+    cursor: pointer;
+    padding: 6px 4px;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    list-style-position: inside;
+    border-radius: 6px;
+}
+
+.picker summary:hover {
+    background: var(--surface-2);
+}
+
+.gallery-group {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.gallery-group select {
+    font: inherit;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 7px 10px;
+    max-width: 210px;
+}
+
+.tile {
+    border-radius: 10px !important;
+    display: grid;
+    grid-template-columns: 96px 1fr;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    text-align: left;
+    padding: 4px 8px 4px 4px;
+    margin-bottom: 4px;
+    background: transparent;
+    border: 1px solid transparent;
+}
+
+.tile:hover {
+    background: var(--surface-2);
+    border-color: var(--border);
+}
+
+.tile[aria-pressed='true'] {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+}
+
+.tile .thumb {
+    background: var(--thumb-bg);
+    border-radius: 4px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+}
+
+.tile .thumb svg {
+    display: block;
+}
+
+.tile .label {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.tile .label span:first-child {
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.tile .label span:last-child {
+    color: var(--muted);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+}
+
+.stage {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+}
+
+#map {
+    position: absolute;
+    inset: 0;
+    background: var(--map-bg);
+}
+
+/* Dark basemap on OpenLayers: a filter on the tile layer's own canvas. The METOC layers carry
+   their own className, so OpenLayers gives them separate canvases and the filter never touches
+   the symbols — widening this selector would repaint every front. MapLibre draws all layers into
+   one canvas, so it darkens its tiles with raster paint properties instead (engines.ts). */
+:root[data-theme='dark'] .metoc-basemap canvas {
+    filter: invert(95%) hue-rotate(180deg) brightness(85%) contrast(90%);
+}
+
+:root[data-theme='dark'] .ol-control button,
+:root[data-theme='dark'] .maplibregl-ctrl-group {
+    background: var(--surface-2);
+    color: var(--text);
+}
+
+:root[data-theme='dark'] .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+    filter: invert(1);
+}
+
+:root[data-theme='dark'] .ol-attribution,
+:root[data-theme='dark'] .maplibregl-ctrl-attrib {
+    background: rgba(26, 33, 41, 0.85);
+    color: var(--muted);
+}
+
+:root[data-theme='dark'] .ol-attribution a,
+:root[data-theme='dark'] .maplibregl-ctrl-attrib a {
+    color: var(--accent);
+}
+
+#status {
+    position: absolute;
+    left: 12px;
+    bottom: 28px;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    padding: 8px 14px;
+    border-radius: 8px;
+    /* Clear of the side panels' column on the right. */
+    max-width: min(560px, calc(100% - 330px));
+    pointer-events: none;
+    z-index: 5;
+}
+
+#status:empty {
+    display: none;
+}
+
+/* The side panels stack in one column, so settings, the selection and the shortcut list never
+   cover each other however many are open. */
+.panels {
+    position: absolute;
+    top: 12px;
+    /* Left of the map controls at the top right. */
+    right: 60px;
+    max-width: calc(100% - 24px);
+    max-height: calc(100% - 24px);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    z-index: 6;
+    pointer-events: none;
+}
+
+.panels.bottom {
+    top: auto;
+    /* At the right edge, above the map's attribution; held below the map controls above it, which
+       stand at most about 200 px tall, so a long panel scrolls rather than runs under them. */
+    right: 12px;
+    bottom: 28px;
+    max-height: calc(100% - 252px);
+}
+
+/* The map controls: one column of icon buttons at the top right, as the tactical-graphics sample's. */
+.map-controls {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 7;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 3px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+}
+
+.map-controls button {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.map-controls button:hover {
+    color: var(--accent);
+    background: var(--surface-2);
+}
+
+/* Icons only: the text stays as the button's accessible name. */
+.map-controls .label-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+}
+
+.map-controls hr {
+    width: 70%;
+    margin: 2px auto;
+    border: 0;
+    border-top: 1px solid var(--border);
+}
+
+.map-controls:not(.is-3d) .for-3d {
+    display: none;
+}
+
+#reset-north svg {
+    transition: transform 0.1s linear;
+}
+
+.panel {
+    pointer-events: auto;
+    width: 290px;
+    max-width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    padding: 14px;
+    z-index: 6;
+}
+
+.panel h2 {
+    margin: 0 0 10px;
+    font-size: 15px;
+}
+
+.panel label {
+    display: block;
+    margin: 10px 0 4px;
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.panel label.check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+}
+
+.panel input[type='range'],
+.panel input[type='text'] {
+    width: 100%;
+}
+
+.panel input[type='text'] {
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface-2);
+    color: var(--text);
+    font: inherit;
+}
+
+.panel output {
+    float: right;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+}
+
+
+.properties .facts {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 10px;
+    font-size: 12px;
+    margin: 0;
+}
+
+.properties .facts dt {
+    color: var(--muted);
+}
+
+.properties .facts dd {
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+    word-break: break-all;
+}
+
+.properties .row {
+    display: flex;
+    gap: 6px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+}
+
+.properties .swatches {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.properties .danger {
+    color: var(--danger);
+}
+
+.hint {
+    color: var(--muted);
+    font-size: 12px;
+    margin: 8px 4px;
+}
+
+@media (max-width: 760px) {
+    #app {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 210px 1fr;
+    }
+
+    .picker {
+        border-right: 0;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .brand {
+        margin-right: 0;
+    }
+
+    /* Icons alone in the toolbar on a phone; the names stay in each button's title and label. */
+    .actions .label-text,
+    .engine .label-text {
+        display: none;
+    }
+
+    #status {
+        max-width: calc(100% - 24px);
+    }
+
+    .drawbar .label-text {
+        display: none;
+    }
+
+    /* The hint wraps to several lines on a phone; the draw bar moves to the top, clear of it. */
+    .drawbar {
+        top: 12px;
+        bottom: auto;
+    }
+
+    .topbar {
+        gap: 8px;
+        padding: 8px 10px;
+    }
+
+    .actions {
+        gap: 4px;
+    }
+
+    .brand p {
+        display: none;
+    }
+}
+
+button.mini {
+    padding: 3px;
+    vertical-align: middle;
+}
+
+button.mini[data-copied='true'] {
+    color: #2e7d32;
+    border-color: #2e7d32;
+}
+
+.warning {
+    margin: 12px 0 0;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: color-mix(in srgb, #f9a825 18%, transparent);
+    border: 1px solid color-mix(in srgb, #f9a825 60%, transparent);
+    font-size: 12px;
+}
+
+.panel input[type='number'] {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface-2);
+    color: var(--text);
+    font: inherit;
+}
+
+.help {
+    width: 340px;
+}
+
+.keys {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 6px 12px;
+    margin: 0;
+    font-size: 12px;
+    align-items: center;
+}
+
+.keys dd {
+    margin: 0;
+    color: var(--muted);
+}
+
+kbd {
+    display: inline-block;
+    min-width: 20px;
+    padding: 2px 6px;
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: 6px;
+    background: var(--surface-2);
+    font: 600 11px/1.3 ui-monospace, SFMono-Regular, Consolas, monospace;
+    text-align: center;
+}
+
+.drawbar {
+    position: absolute;
+    left: 50%;
+    bottom: 84px;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 6px;
+    z-index: 5;
+}
+
+.drawbar button {
+    box-shadow: var(--shadow);
+    background: var(--surface);
+}
+
+/* The selected graphic, drawn as it is, beside its name: the picker's frame, one size for every graphic. */
+.properties .head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.properties .head h2 {
+    margin: 0;
+}
+
+/* At least 10 px clear of the facts under it. */
+.properties .head {
+    margin-bottom: 14px;
+}
+
+.properties .preview {
+    flex: none;
+    width: 104px;
+    height: 50px;
+    display: grid;
+    place-items: center;
+    background: var(--thumb-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+/* What the selected graphic has (its size, its colour): the picker's chosen-tile look. */
+.properties .row button[aria-pressed='true'],
+.properties .swatches button[aria-pressed='true'] {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 600;
+}
+
+/* An add-on's toolbar buttons sit among the page's own. */
+.addon-tools {
+    display: contents;
+}

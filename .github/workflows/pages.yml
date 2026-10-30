@@ -1,0 +1,54 @@
+name: Deploy the sample page to GitHub Pages
+
+# The sample page is a static build with no backend, so Pages serves it as-is. `deploy-pages`
+# publishes an artifact rather than committing a `gh-pages` branch.
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# A publish that lands mid-deploy queues rather than cancels: a half-deployed site is worse than a
+# slightly stale one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: build the sample page
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm install --no-audit --no-fund
+
+      - name: Build
+        env:
+          # A project site, served from /<repository>/, so the page's asset URLs need that prefix;
+          # vite.config.mts reads PUBLIC_URL as its base.
+          PUBLIC_URL: /${{ github.event.repository.name }}
+        run: npm run build:demo
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build
+
+  deploy:
+    name: deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

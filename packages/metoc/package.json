@@ -1,0 +1,96 @@
+{
+  "name": "@zaes/metoc",
+  "version": "0.1.0",
+  "author": "ZAES",
+  "contributors": [
+    "Edwin Sanchez <edwin.sanchez@zaes.com>"
+  ],
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/types/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "description": "MIL-STD-2525E Appendix M weather and oceanographic graphics (symbol sets 45 and 46) as GeoJSON, with OpenLayers and MapLibre renderers and an editor.",
+  "keywords": [
+    "metoc",
+    "weather",
+    "mil-std-2525",
+    "symbology",
+    "geojson",
+    "openlayers",
+    "maplibre"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zaes-code/metoc.git",
+    "directory": "packages/metoc"
+  },
+  "homepage": "https://github.com/zaes-code/metoc#readme",
+  "bugs": {
+    "url": "https://github.com/zaes-code/metoc/issues"
+  },
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    },
+    "./openlayers": {
+      "types": "./dist/types/openlayers/index.d.ts",
+      "import": "./dist/esm/openlayers/index.js",
+      "require": "./dist/cjs/openlayers/index.js"
+    },
+    "./maplibre": {
+      "types": "./dist/types/maplibre/index.d.ts",
+      "import": "./dist/esm/maplibre/index.js",
+      "require": "./dist/cjs/maplibre/index.js"
+    },
+    "./editor": {
+      "types": "./dist/types/editor/index.d.ts",
+      "import": "./dist/esm/editor/index.js",
+      "require": "./dist/cjs/editor/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "@zaes/symbology-engine": "0.1.0",
+    "@zaes/symbology-editor": "0.1.0",
+    "@types/geojson": "^7946.0.16"
+  },
+  "peerDependencies": {
+    "maplibre-gl": ">=4",
+    "ol": ">=9"
+  },
+  "peerDependenciesMeta": {
+    "maplibre-gl": {
+      "optional": true
+    },
+    "ol": {
+      "optional": true
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "openlayers": [
+        "dist/types/openlayers/index.d.ts"
+      ],
+      "maplibre": [
+        "dist/types/maplibre/index.d.ts"
+      ],
+      "editor": [
+        "dist/types/editor/index.d.ts"
+      ]
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
