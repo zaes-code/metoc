@@ -9,7 +9,7 @@
  */
 
 import {MetocCategory, metocSpec, type AreaStyleDef, type GlyphDef, type LineStyleDef, type MetocColor} from '../core/specTypes.js';
-import {DEEP_BLUE, WATER_BLUE} from './set46Points.js';
+import {DEEP_BLUE, KELP_FROND, LIGHT_GRAY, TAN, WATER_BLUE} from './set46Points.js';
 
 const ICE = MetocCategory.Ice;
 const DEP = MetocCategory.Depth;
@@ -26,31 +26,37 @@ const MAN = MetocCategory.ManMade;
 const L = (style: LineStyleDef) => ({lineStyle: style});
 const A = (style: AreaStyleDef) => ({areaStyle: style});
 
-const CHART_GRAY = 'rgb(160, 160, 160)' as const;
+const CHART_GRAY = LIGHT_GRAY;
 const YELLOW_GREEN = 'rgb(128, 255, 0)' as const;
 const ORANGE = 'rgb(255, 128, 0)' as const;
 
 /** Small marks repeated along limits and outlines. */
 const ELLIPSE: GlyphDef = {parts: [{d: 'M5 12A7 3 0 1 0 19 12A7 3 0 1 0 5 12Z', width: 1.6}]};
 const ELLIPSE_X: GlyphDef = {parts: [{d: 'M1 12A5 2.4 0 1 0 11 12A5 2.4 0 1 0 1 12Z', width: 1.6}, {d: 'M14 10L18 14M18 10L14 14', width: 1.6}], anchor: [9.5, 12]};
-const CUP: GlyphDef = {parts: [{d: 'M5 9A7 7 0 0 0 19 9', width: 1.8}]};
+/** An undercast cup, hanging left of the drawn direction: below a limit drawn right to left, as drawn. */
+const CUP: GlyphDef = {parts: [{d: 'M5 15A7 7 0 0 1 19 15', width: 1.8}]};
 const CROSS: GlyphDef = {parts: [{d: 'M7 7L17 17M17 7L7 17', width: 2.4}]};
+/** An anchorage area's half disc, bulging to the glyph's foot: into the area, the outline glyph's top being outward. */
 const SMALL_CUP: GlyphDef = {parts: [{d: 'M7 12H17A5 5 0 0 1 7 12Z', width: 1.4}], scale: 0.7};
+/** An anchorage line's half disc, left of the drawn direction: below a line drawn right to left, as drawn. */
+const LINE_CUP: GlyphDef = {parts: [{d: 'M7 12H17A5 5 0 0 0 7 12Z', width: 1.4}], scale: 0.7};
+/** A restricted area's T: its bar on the line, its stem left of the drawn direction. */
+const T_MARK: GlyphDef = {parts: [{d: 'M2 19H22M12 19V5', width: 2.4}], anchor: [12, 19], scale: 0.55};
+/** A pipeline's dash and circle, one period of it, so the two never drift apart. */
+const PIPE: GlyphDef = {parts: [{d: 'M0 12H11.5', width: 2.6}, {circle: [17, 12, 6], fill: 'main'}], scale: 0.6};
 const ANCHOR: GlyphDef = {
     parts: [
         {d: 'M12 3.5V20.5M7.5 6.5H16.5', width: 2},
         {d: 'M4 14.5Q4.5 20.5 12 20.5Q19.5 20.5 20 14.5', width: 2},
     ],
 };
-const DOT: GlyphDef = {parts: [{circle: [12, 12, 4], fill: 'main'}], scale: 0.8};
 const HASH: GlyphDef = {parts: [{d: 'M9.5 4L8.5 20M15.5 4L14.5 20M5 9H19.5M4.5 15H19', width: 1.4}], scale: 0.6};
-const KELP: GlyphDef = {parts: [{d: 'M2 12.5C8 11.5 14 13.5 22 11M6 12.2L3 9M6 12.2L4 15.5M12.5 12.6L9.5 8.5M16.5 12.2L19.5 9', width: 1.4}], scale: 0.75};
-const FISH_TRAP: GlyphDef = {parts: [{d: 'M6 10H14V15H6ZM6 10L4 7M14 10L16 7', width: 1.2}], scale: 0.8};
+const KELP: GlyphDef = {parts: [{d: KELP_FROND, width: 1.4}], scale: 0.75};
+/** A fish trap: a box with one stroke rising up and back from the middle of its top. */
+const FISH_TRAP: GlyphDef = {parts: [{d: 'M6 10H16V15H6ZM11 10L7.8 7.2', width: 1.2}], scale: 0.8};
 const ATTENTION: GlyphDef = {parts: [{circle: [12, 12, 8], width: 1.6}, {d: 'M12 6.5V13.5', width: 2}, {circle: [12, 17, 1.2], fill: 'main'}]};
-const RIM = {color: CHART_GRAY, widthPx: 1} as const;
-
-/** A solid fill in an exact colour with a thin grey rim, as the bottom-descriptor icons draw it. */
-const fill = (color: MetocColor) => A({fill: {color}, outline: RIM});
+/** A solid fill in an exact colour with no outline, as the bottom-descriptor icons draw it. */
+const fill = (color: MetocColor) => A({fill: {color}, outline: null});
 
 export const SET46_LINE_AREA_SPECS = [
     // Ice limits and openings (Line1).
@@ -63,20 +69,21 @@ export const SET46_LINE_AREA_SPECS = [
     metocSpec('IceCracks', 'Openings in the Ice - Cracks', ICE, 46, '110601', 'Line1', ['black'], L({color: 'main', widthPx: 1.3})),
     metocSpec('IceCracksSpecific', 'Openings in the Ice - Cracks at a Specific Location', ICE, 46, '110602', 'Line1', ['black'], L({color: 'main', widthPx: 1.3, decorations: [{kind: 'ticks', side: 0, lengthPx: 11, spacingPx: 12}]})),
     // A lead is a channel of open water: a double line, drawn as a wide stroke with the halo inside.
-    metocSpec('IceLead', 'Openings in the Ice - Lead', ICE, 46, '110603', 'Line1', ['black'], L({color: 'halo', widthPx: 4, casing: {color: 'main', widthPx: 7}})),
+    // The drawings set the rails about nine times their own width apart.
+    metocSpec('IceLead', 'Openings in the Ice - Lead', ICE, 46, '110603', 'Line1', ['black'], L({color: 'halo', widthPx: 11.5, casing: {color: 'main', widthPx: 14.5}})),
     metocSpec('IceFrozenLead', 'Openings in the Ice - Frozen Lead', ICE, 46, '110604', 'Line1', ['black'], L({
         color: 'halo',
-        widthPx: 7,
-        casing: {color: 'main', widthPx: 10},
-        decorations: [{kind: 'ticks', side: 0, lengthPx: 8, spacingPx: 14}],
+        widthPx: 11.5,
+        casing: {color: 'main', widthPx: 14.5},
+        decorations: [{kind: 'ticks', side: 0, lengthPx: 13, spacingPx: 20}],
     })),
 
     // Depth and coast.
     metocSpec('DepthCurve', 'Depth - Depth Curve', DEP, 46, '120102', 'Line1', [CHART_GRAY], {...L({color: 'main', widthPx: 1.3}), valueField: {label: 'Depth', placeholder: '20'}}),
     metocSpec('DepthContour', 'Depth - Depth Contour', DEP, 46, '120103', 'Line1', [CHART_GRAY], {...L({color: 'main', widthPx: 1.3}), valueField: {label: 'Depth', placeholder: '20'}}),
-    metocSpec('DepthArea', 'Depth - Depth Area', DEP, 46, '120104', 'Area2', ['rgb(30, 110, 255)'], A({fill: {color: 'rgb(102, 178, 255)', opacity: 0.55}, outline: {color: 'main', widthPx: 4}})),
+    metocSpec('DepthArea', 'Depth - Depth Area', DEP, 46, '120104', 'Area2', ['rgb(14, 97, 250)'], A({fill: {color: 'rgb(255, 255, 255)', opacity: 0.55}, outline: {color: 'main', widthPx: 3}, bands: [{color: 'rgb(107, 186, 253)', widthPx: 8, insetPx: 5.5}]})),
     metocSpec('Coastline', 'Coastal Hydrography - Coastline', DEP, 46, '120201', 'Line1', [CHART_GRAY], L({color: 'main', widthPx: 1.6})),
-    metocSpec('Island', 'Coastal Hydrography - Island', DEP, 46, '120202', 'Area2', ['rgb(210, 170, 100)'], A({fill: {color: 'main'}, outline: null})),
+    metocSpec('Island', 'Coastal Hydrography - Island', DEP, 46, '120202', 'Area2', [TAN], A({fill: {color: 'main'}, outline: null})),
     metocSpec('Beach', 'Coastal Hydrography - Beach', DEP, 46, '120203', 'Area2', ['rgb(210, 160, 140)'], A({
         fill: {color: 'rgb(250, 240, 235)'},
         outline: {color: 'main', widthPx: 2},
@@ -92,8 +99,9 @@ export const SET46_LINE_AREA_SPECS = [
         widthPx: 1.5,
         dash: [6, 4],
         decorations: [
-            {kind: 'glyph', glyph: SMALL_CUP, spacingPx: 22},
-            {kind: 'glyph', glyph: ANCHOR, spacingPx: 0, at: 'middle'},
+            {kind: 'glyph', glyph: LINE_CUP, spacingPx: 22},
+            // "Oriented upright on the display as shown."
+            {kind: 'glyph', glyph: ANCHOR, spacingPx: 0, at: 'middle', upright: true},
         ],
     })),
     metocSpec('AnchorageArea', 'Ports - Anchorage - Area', POR, 46, '120306', 'Area2', ['magenta'], A({
@@ -101,14 +109,14 @@ export const SET46_LINE_AREA_SPECS = [
         outlineGlyph: {glyph: SMALL_CUP, spacingPx: 18},
         centerGlyph: ANCHOR,
     })),
-    metocSpec('PierWharfQuay', 'Ports - Pier/Wharf/Quay', POR, 46, '120308', 'Line1', [CHART_GRAY], L({color: 'main', widthPx: 2})),
+    metocSpec('PierWharfQuay', 'Ports - Pier/Wharf/Quay', POR, 46, '120308', 'Line1', [CHART_GRAY], L({color: 'main', widthPx: 2.5})),
     metocSpec('FishTrapsArea', 'Ports and Harbors - Fish Traps - Area', POR, 46, '120312', 'Area2', [CHART_GRAY], A({
         outline: {color: 'main', widthPx: 1.5, dash: [5, 3]},
         pattern: {glyph: FISH_TRAP, spacingPx: 34},
     })),
-    metocSpec('Drydock', 'Facilities - Drydock', POR, 46, '120314', 'Area2', ['rgb(190, 150, 60)'], A({fill: {color: 'main'}, outline: {color: 'black', widthPx: 2, dash: [5, 3]}})),
+    metocSpec('Drydock', 'Facilities - Drydock', POR, 46, '120314', 'Area2', ['rgb(189, 154, 56)'], A({fill: {color: 'main'}, outline: {color: 'black', widthPx: 2, dash: [5, 3]}})),
     metocSpec('OffshoreLoadingLine', 'Facilities - Offshore Loading Facility - Line', POR, 46, '120317', 'Line1', [CHART_GRAY], L({color: 'main', widthPx: 5})),
-    metocSpec('OffshoreLoadingArea', 'Facilities - Offshore Loading Facility - Area', POR, 46, '120318', 'Area2', ['rgb(190, 150, 60)'], A({fill: {color: 'main'}, outline: null})),
+    metocSpec('OffshoreLoadingArea', 'Facilities - Offshore Loading Facility - Area', POR, 46, '120318', 'Area2', ['rgb(189, 154, 56)'], A({fill: {color: 'main'}, outline: null})),
     metocSpec('RampAboveWater', 'Facilities - Ramp - Above Water', POR, 46, '120319', 'Line1', ['black'], L({color: 'main', widthPx: 2})),
     metocSpec('RampBelowWater', 'Facilities - Ramp - Below Water', POR, 46, '120320', 'Line1', ['black'], L({color: 'main', widthPx: 2, dash: [6, 4]})),
     metocSpec('BreakwaterAboveWater', 'Shoreline Protection - Breakwater/Groin/Jetty - Above Water', POR, 46, '120326', 'Line1', ['gray'], L({color: 'main', widthPx: 2.5})),
@@ -203,7 +211,7 @@ export const SET46_LINE_AREA_SPECS = [
     // Maritime limits.
     metocSpec('MaritimeLimitBoundary', 'Limits - Maritime Limit Boundary', LIM, 46, '150100', 'Line1', ['magenta'], L({color: 'main', widthPx: 2, dash: [3, 3]})),
     metocSpec('MaritimeArea', 'Limits - Maritime Area', LIM, 46, '150200', 'Area2', ['magenta'], A({outline: {color: 'main', widthPx: 2.5, dash: [2, 3]}})),
-    metocSpec('RestrictedArea', 'Limits - Restricted Area', LIM, 46, '150300', 'Line1', ['magenta'], L({color: 'main', widthPx: 1.6, decorations: [{kind: 'ticks', side: -1, lengthPx: 7, spacingPx: 11}]})),
+    metocSpec('RestrictedArea', 'Limits - Restricted Area', LIM, 46, '150300', 'Line1', ['magenta'], L({color: 'main', hideLine: true, decorations: [{kind: 'glyph', glyph: T_MARK, spacingPx: 17.5}]})),
     metocSpec('SweptArea', 'Limits - Swept Area', LIM, 46, '150400', 'Area2', ['magenta'], A({outline: null, dots: {color: 'main', spacingPx: 22, radiusPx: 3.5}})),
     metocSpec('TrainingArea', 'Limits - Training Area', LIM, 46, '150500', 'Area2', ['magenta'], A({outline: {color: 'main', widthPx: 2, dash: [3, 3]}, centerGlyph: ATTENTION})),
     metocSpec('OperatorDefinedMaritimeArea', 'Limits - Operator-Defined', LIM, 46, '150600', 'Area2', [ORANGE], {
@@ -217,5 +225,5 @@ export const SET46_LINE_AREA_SPECS = [
     metocSpec('SubmergedCrib', 'Man-Made Structures - Submerged Crib', MAN, 46, '160200', 'Area2', [DEEP_BLUE], A({fill: {color: 'main'}, outline: {color: 'black', widthPx: 1.5, dash: [1, 2]}})),
     metocSpec('Canal', 'Man-Made Structures - Canal', MAN, 46, '160300', 'Line1', ['black'], L({color: 'main', widthPx: 5})),
     metocSpec('OilGasRigField', 'Man-Made Structures - Oil/Gas Rig Field', MAN, 46, '160700', 'Area2', [CHART_GRAY], A({outline: null, dots: {color: 'main', spacingPx: 12, radiusPx: 1.6}})),
-    metocSpec('Pipeline', 'Man-Made Structures - Pipelines/Pipe', MAN, 46, '160800', 'Line1', [CHART_GRAY], L({color: 'main', widthPx: 2, dash: [8, 8], decorations: [{kind: 'glyph', glyph: DOT, spacingPx: 16}]})),
+    metocSpec('Pipeline', 'Man-Made Structures - Pipelines/Pipe', MAN, 46, '160800', 'Line1', [CHART_GRAY], L({color: 'main', hideLine: true, decorations: [{kind: 'glyph', glyph: PIPE, spacingPx: 18}]})),
 ] as const;

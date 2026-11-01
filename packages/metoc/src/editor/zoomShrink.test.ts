@@ -70,3 +70,16 @@ describe('editing a shrunk point symbol', () => {
         expect(collection.get(id)!.properties.metoc.size).toBe('large');
     });
 });
+
+describe('a shrunk point value', () => {
+    it('is left out once too small to read, while the symbol stays', () => {
+        const feature = metocFeature(N.TurbulenceSevere, [[0, 0]], {value: '250'});
+        configureMetoc({pointFullSizeScale: 1_000});
+        const far = paintMetocGraphic(feature, {resolution: 50_000});
+        expect(far.some((p) => p.text && !p.text.symbol)).toBe(false);
+        expect(far.some((p) => !p.text)).toBe(true);
+        resetMetocConfig();
+        const small = metocFeature(N.TurbulenceSevere, [[0, 0]], {value: '250', size: 'small'});
+        expect(paintMetocGraphic(small, {resolution: 1_000}).some((p) => p.text?.text === '250')).toBe(true);
+    });
+});

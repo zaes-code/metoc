@@ -25,7 +25,7 @@ const SAMPLE_PROPS: Partial<Record<MetocGraphicName, Omit<MetocProperties, 'name
     Isodrosotherm: {value: '15'},
     Thickness: {value: '540'},
     OperatorDefinedFreeformLine: {value: 'A'},
-    TropicalStormWindArea: {value: '34 KT', dtg: '221800Z'},
+    TropicalStormWindArea: {dtg: '221800Z'},
     LowPressureCenter: {value: '998'},
     HighPressureCenter: {value: '1016'},
     TropopauseLow: {value: '270'},

@@ -22,6 +22,10 @@ describe('the station plot', () => {
         expect(stationPressureCode(1000.04)).toBe('000');
         expect(stationChangeCode(1.9)).toBe('19');
         expect(stationChangeCode(-0.3)).toBe('03');
+        // From 10 hPa the WMO group's three digits, never clamped to 99; the tendency symbol carries the sign.
+        expect(stationChangeCode(12.3)).toBe('123');
+        expect(stationChangeCode(-12.3)).toBe('123');
+        expect(stationChangeCode(150)).toBe('999');
     });
 
     it('places each value where the station model puts it', () => {

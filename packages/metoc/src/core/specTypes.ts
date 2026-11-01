@@ -147,6 +147,11 @@ export interface MetocSpecDef<N extends string = string> {
     readonly geometry: MetocGeometryKind;
     /** A point drawn with a second click for its direction: the wind barb's shaft. */
     readonly directional?: boolean;
+    /**
+     * A point whose name gives it an orientation (ice drift, sastrugi): the operator may always turn
+     * it, saved as its `rotation`, whether or not turning point symbols is allowed.
+     */
+    readonly oriented?: boolean;
     /** The colours the graphic uses, the first being its main colour. */
     readonly colors: readonly MetocColor[];
     /**
@@ -173,7 +178,7 @@ export interface MetocSpecDef<N extends string = string> {
 type Extra = Partial<
     Pick<
         MetocSpecDef,
-        'operatorColor' | 'valueField' | 'operatorDash' | 'dateTimeLabel' | 'geometry' | 'directional' | 'glyph' | 'lineStyle' | 'areaStyle' | 'note'
+        'operatorColor' | 'valueField' | 'operatorDash' | 'dateTimeLabel' | 'geometry' | 'directional' | 'oriented' | 'glyph' | 'lineStyle' | 'areaStyle' | 'note'
     >
 >;
 

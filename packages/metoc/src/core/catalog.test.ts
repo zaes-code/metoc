@@ -80,6 +80,8 @@ describe('the catalog', () => {
     });
 
     it('marks operator colours only where Table M-II leaves the colour open', () => {
+        expect(METOC_GRAPHICS[MetocGraphicName.PressureRise].operatorColor).toEqual(['cold', 'black']);
+        expect(METOC_GRAPHICS[MetocGraphicName.PressureFall].operatorColor).toEqual(['warm', 'black']);
         const open = listMetocGraphics().filter((n) => METOC_GRAPHICS[n].operatorColor);
         expect(open.sort()).toEqual(
             [
@@ -93,6 +95,15 @@ describe('the catalog', () => {
                 MetocGraphicName.VolcanicAsh,
                 MetocGraphicName.OperatorDefinedMaritimeArea,
                 MetocGraphicName.OperatorDefinedFreeformArea,
+                // "Black/Blue" and "Black/Red": the rising and falling pressure tendencies.
+                MetocGraphicName.PressureRiseThenFallHigher,
+                MetocGraphicName.PressureRiseThenSteady,
+                MetocGraphicName.PressureRise,
+                MetocGraphicName.PressureRiseThenRiseHigher,
+                MetocGraphicName.PressureFallThenRiseLower,
+                MetocGraphicName.PressureFallThenSteady,
+                MetocGraphicName.PressureFall,
+                MetocGraphicName.PressureRiseThenFallLower,
             ].sort(),
         );
     });

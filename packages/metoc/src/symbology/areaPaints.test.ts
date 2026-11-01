@@ -1,6 +1,6 @@
 import {MetocGraphicName as N} from '../core/catalog';
 import {DEFAULT_METOC_PALETTE, configureMetoc, resetMetocConfig} from '../core/config';
-import {type Paint, pointInRing, type ProjectedPosition as P} from '@zaes/symbology-engine';
+import {estimateTextWidth, type Paint, pointInRing, type ProjectedPosition as P} from '@zaes/symbology-engine';
 import {paintMetocPath, paintedPath} from '../core/render';
 import {MIN_LABEL_PX, interiorPoint} from './areaPaints';
 
@@ -134,15 +134,41 @@ describe('labels', () => {
         expect(total).toBeGreaterThan(5);
     });
 
-    it('boxes the date-time label outside the upper left, with a leader into the area', () => {
-        const paints = paint(N.TropicalStormWindArea, {dtg: '221800Z'});
+    it('boxes the date-time label at the outline’s upper left, within the area’s bounds, with a leader into the area', () => {
+        // A storm's wind area: a circle 300 px across. The box stands in the corner of its bounds,
+        // clear of the outline, as Table M-II draws it — not beyond the bounds.
+        const circle: P[] = Array.from({length: 64}, (_, i) => [(150 + 150 * Math.cos((2 * Math.PI * i) / 64)) * res, (150 + 150 * Math.sin((2 * Math.PI * i) / 64)) * res] as P);
+        const paints = paint(N.TropicalStormWindArea, {dtg: '221800Z'}, circle);
         const label = of(paints, 'label').find((p) => p.text!.boxColor)!;
         expect(label.text!.text).toBe('221800Z');
         const [x, y] = label.geometry.coordinates as unknown as P;
-        expect(x).toBeLessThan(0);
-        expect(y).toBeGreaterThan(300 * res);
+        const halfW = (estimateTextWidth('221800Z', label.text!.sizePx) / 2 + 4) * res;
+        const halfH = (label.text!.sizePx * 0.75 + 3) * res;
+        const ring = paintedPath(circle, true);
+        for (const [fx, fy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+            const corner: P = [x + fx * halfW, y + fy * halfH];
+            expect(corner[0]).toBeGreaterThanOrEqual(-1e-6);
+            expect(corner[1]).toBeLessThanOrEqual(300 * res + 1e-6);
+            expect(pointInRing(corner, ring)).toBe(false);
+        }
+        expect(x).toBeLessThan(centre[0]);
+        expect(y).toBeGreaterThan(centre[1]);
         const leader = of(paints, 'decoration').find((p) => p.stroke?.widthPx === 1)!;
-        expect(pointInRing((coords(leader) as P[])[1], square(300, res))).toBe(true);
+        expect(pointInRing((coords(leader) as P[])[1], ring)).toBe(true);
+    });
+
+    it('stands the date-time box just off the outline where the area fills its corner', () => {
+        const paints = paint(N.TropicalStormWindArea, {dtg: '221800Z'});
+        const label = of(paints, 'label').find((p) => p.text!.boxColor)!;
+        const [x, y] = label.geometry.coordinates as unknown as P;
+        const halfW = (estimateTextWidth('221800Z', label.text!.sizePx) / 2 + 4) * res;
+        const halfH = (label.text!.sizePx * 0.75 + 3) * res;
+        const ring = paintedPath(square(300, res), true);
+        const edge = ring.reduce((b, p) => (p[1] - p[0] > b[1] - b[0] ? p : b));
+        // Its lower-right corner a few pixels up and left of the outline's upper-left point: at the edge, not off in the distance.
+        expect((edge[0] - (x + halfW)) / res).toBeCloseTo(3, 6);
+        expect((y - halfH - edge[1]) / res).toBeCloseTo(3, 6);
+        expect(pointInRing([x + halfW, y - halfH], ring)).toBe(false);
     });
 
     it('draws no box and no label when the fields are absent or blank', () => {

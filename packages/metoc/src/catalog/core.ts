@@ -80,18 +80,20 @@ export const CORE_SPECS = [
         operatorColor: true,
         operatorDash: true,
     }),
-    // Areas. Table M-II gives no RGB for brown, green or yellow; the palette picks them.
-    metocSpec('TropicalStormWindArea', 'Tropical Storm Wind Area', A, 45, '162004', 'Area1', ['warm'], {
-        // "Red - outermost (34 kt); Purple - second (50 kt, 64 kt Atlantic); Red or Black - innermost (100 kt)."
+    // Areas. Table M-II prints no RGB for green or yellow on these rows, and brown only on the icing
+    // rows; the palette holds them.
+    metocSpec('TropicalStormWindArea', 'Tropical Storm Wind Areas and Date/Time Labels', A, 45, '162004', 'Area1', ['warm'], {
+        // "Red - outermost (34 kt); Purple - second (50 kt, 64 kt Atlantic); Red or Black - innermost
+        // (100 kt)." The ring's colour carries its wind speed; the only text the row documents and
+        // draws is the boxed date-time label.
         operatorColor: ['warm', 'isotach', 'black'],
-        valueField: v('Wind radius', '34 KT'),
         dateTimeLabel: true,
     }),
     metocSpec('InstrumentFlightRule', 'Instrument Flight Rule (IFR)', A, 45, '170100', 'Area2', ['warm']),
     metocSpec('MarginalVisualFlightRule', 'Marginal Visual Flight Rule (MVFR)', A, 45, '170200', 'Area2', ['cold']),
     metocSpec('Turbulence', 'Turbulence', A, 45, '170300', 'Area2', ['cold']),
     metocSpec('Icing', 'Icing', A, 45, '170400', 'Area2', ['brown']),
-    metocSpec('LiquidPrecipitation', 'Liquid Precipitation - Non-Convective', A, 45, '170500', 'Area2', ['green']),
+    metocSpec('LiquidPrecipitation', 'Liquid Precipitation - Non-Convective Continuous or Intermittent', A, 45, '170500', 'Area2', ['green']),
     metocSpec('ConvectivePrecipitation', 'Liquid Precipitation - Convective', A, 45, '170501', 'Area2', ['green']),
     metocSpec('FreezingPrecipitation', 'Freezing/Frozen Precipitation', A, 45, '170600', 'Area2', ['warm']),
     metocSpec('Thunderstorm', 'Thunderstorm', A, 45, '170700', 'Area2', ['warm']),

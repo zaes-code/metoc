@@ -21,17 +21,20 @@ export const DEFAULT_METOC_PALETTE: Readonly<Record<MetocColorRole, string>> = {
     black: 'rgb(0, 0, 0)',
     convergence: 'rgb(255, 128, 0)',
     discontinuityGreen: 'rgb(13, 223, 39)',
-    // Table M-II says "Purple" and "Green" without RGB values for these two.
-    isotach: 'rgb(160, 32, 240)',
+    // The isotach and the tropical storm wind area's second ring are "Purple" with no RGB, and the
+    // drawings colour them (255, 0, 255): the RGB Table M-III itself prints as "Purple" (140101).
+    isotach: 'rgb(255, 0, 255)',
+    // "Green" with no RGB.
     isodrosotherm: 'rgb(0, 128, 0)',
-    // "Green", "Brown" and "Yellow" in the area rows, also without RGB values; matched to the drawings.
+    // "Green" and "Yellow" in the area rows, also without RGB values; matched to the drawings.
     green: 'rgb(0, 128, 0)',
-    brown: 'rgb(181, 136, 52)',
     yellow: 'rgb(255, 230, 0)',
-    // Set 46 and the set-45 icing icons.
-    gray: 'rgb(128, 128, 128)',
-    magenta: 'rgb(214, 0, 147)',
+    // "Brown" is printed once, as (124, 96, 13) on the icing rows; every brown uses it.
+    brown: 'rgb(124, 96, 13)',
     icingBrown: 'rgb(124, 96, 13)',
+    // Set 46: the drawings' dark grey and magenta.
+    gray: 'rgb(128, 128, 128)',
+    magenta: 'rgb(255, 0, 255)',
     white: 'rgb(255, 255, 255)',
 };
 

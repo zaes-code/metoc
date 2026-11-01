@@ -295,8 +295,16 @@ function renderProperties(force = false): void {
         shownId = null;
         return;
     }
+    // A typed edit still waiting for its undo step belongs to the graphic it was typed for: record it
+    // before another graphic's panel replaces the field (selecting from code or by keyboard runs no
+    // pointerdown to flush it, and its checkpoint, landing later, rebuilt the new panel under the
+    // operator's typing).
+    if (shownId !== id) flushPendingEdit();
     // Rebuilding while the operator types would steal focus; only rebuild on a new selection.
     if (!force && shownId === id && !panel.hidden) return;
+    // A rebuild of the same graphic (undo, redo, a recorded step) keeps the field being typed in.
+    const focused = shownId === id && document.activeElement instanceof HTMLInputElement && panel.contains(document.activeElement) ? document.activeElement : null;
+    const caret = focused && focused.type === 'text' ? [focused.selectionStart, focused.selectionEnd] : null;
     shownId = id;
     const p = f.properties.metoc;
     const s = getMetocSpec(p.name);
@@ -311,8 +319,8 @@ function renderProperties(force = false): void {
     const facts = document.createElement('dl');
     facts.className = 'facts';
     for (const [k, v] of [
-        ['Symbol set', '45 Atmospheric'],
-        ['Entity code', s.entityCode ?? 'none in Table A-LI'],
+        ['Symbol set', s.symbolSet === 46 ? '46 Oceanographic' : '45 Atmospheric'],
+        ['Entity code', s.entityCode ?? `none in Table ${s.symbolSet === 46 ? 'A-LII' : 'A-LI'}`],
         ['SIDC', metocSidc(p.name) ?? 'none'],
         ['Draw rule', s.drawRule],
         ['Points', String(drawnPoints(f).length)],
@@ -541,6 +549,13 @@ function renderProperties(force = false): void {
     row.append(del);
     panel.append(row);
     decorateIcons(panel);
+    if (focused?.id) {
+        const again = document.getElementById(focused.id);
+        if (again instanceof HTMLInputElement) {
+            again.focus();
+            if (caret && again.type === 'text') again.setSelectionRange(caret[0], caret[1]);
+        }
+    }
 }
 
 function toHex(color: string): string {

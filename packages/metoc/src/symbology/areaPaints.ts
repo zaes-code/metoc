@@ -148,6 +148,11 @@ function outline(input: PainterInput, style: OutlineStyle, color: string, gaps: 
     }
 }
 
+/** The point of a ring furthest to the upper left: where the tropical storm wind area's date-time box stands off it. */
+export function dateTimeAnchor(ring: readonly P[]): P {
+    return ring.reduce((best, p) => (p[1] - p[0] > best[1] - best[0] ? p : best), ring[0]);
+}
+
 /** The label size for a text of `text` at most `share` of `limitPx`, or 0 when unreadable. */
 function cappedLabelSize(text: string, limitPx: number, share: number): number {
     const cfg = getMetocConfig();
@@ -204,8 +209,8 @@ function area(style: OutlineStyle): Painter {
 
 /**
  * The tropical storm wind area: a solid outline in its radius's colour, its value (the wind
- * radius) on the outline at the top, and the boxed date-time label off the upper-left with a
- * leader to the storm's centre, as Table M-II draws it.
+ * radius) on the outline at the top, and the boxed date-time label at the outline's upper left, in
+ * the corner of the area's bounds, with a leader to the storm's centre, as Table M-II draws it.
  */
 const tropicalStormWindArea: Painter = (input) => {
     const {walker: w, resolution: res, props} = input;
@@ -247,8 +252,16 @@ const tropicalStormWindArea: Painter = (input) => {
             const [x0, , , y1] = boundsOf(ring);
             const halfW = (estimateTextWidth(dtg, size) / 2 + 4) * res;
             const halfH = (size * 0.75 + 3) * res;
-            const gap = 6 * res;
-            const box: P = [x0 - gap - halfW, y1 + gap + halfH];
+            // In the upper-left corner of the area's bounds, where the drawing puts it, when it is
+            // clear of the outline there (a round storm area); else just off the outline's upper-left
+            // edge, its lower-right corner a few pixels clear of it.
+            const inCorner: P = [x0 + halfW, y1 - halfH];
+            const clear = (c: P) =>
+                [[-1, -1], [1, -1], [1, 1], [-1, 1]].every(([fx, fy]) => !pointInRing([c[0] + fx * halfW, c[1] + fy * halfH], ring)) &&
+                !ring.some((p) => Math.abs(p[0] - c[0]) < halfW && Math.abs(p[1] - c[1]) < halfH);
+            const edge = dateTimeAnchor(ring);
+            const gap = 3 * res;
+            const box: P = clear(inCorner) ? inCorner : [edge[0] - gap - halfW, edge[1] + gap + halfH];
             const centre = interiorPoint(ring);
             const corner: P = [box[0] + halfW, box[1] - halfH];
             paints.push({role: 'decoration', geometry: {type: 'LineString', coordinates: [corner, centre]}, stroke: {color: colorOf('black'), widthPx: 1}});
@@ -372,8 +385,10 @@ const convergenceZone: Painter = (input) => {
         for (const off of offsets) {
             const t = base + off;
             if (t > samples[samples.length - 1].t) continue;
+            // Slanted as Table M-II draws them: each rung's top a fifth of the band's width further along.
             const s = rungAt(t);
-            paints.push({role: 'decoration', geometry: {type: 'LineString', coordinates: [s.bottom, s.top]}, stroke: {color, widthPx: lineWidth()}});
+            const top = rungAt(t + 0.2 * Math.hypot(s.top[0] - s.bottom[0], s.top[1] - s.bottom[1])).top;
+            paints.push({role: 'decoration', geometry: {type: 'LineString', coordinates: [s.bottom, top]}, stroke: {color, widthPx: lineWidth()}});
         }
     }
     return paints;

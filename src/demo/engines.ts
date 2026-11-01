@@ -157,7 +157,12 @@ function mapLibreEngine(
             sources: {
                 osm: {type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, maxzoom: 19, attribution: OSM_ATTRIBUTION},
             },
-            layers: [{id: 'osm', type: 'raster', source: 'osm', paint: {'raster-opacity': opacity, ...RASTER_PAINT[dark ? 'dark' : 'light']}}],
+            // An opaque backdrop under the faded basemap: on terrain, a see-through map shows each
+            // tile's skirt as a wall hanging under the graphics.
+            layers: [
+                {id: 'backdrop', type: 'background', paint: {'background-color': backdropColor(target, dark)}},
+                {id: 'osm', type: 'raster', source: 'osm', paint: {'raster-opacity': opacity, ...RASTER_PAINT[dark ? 'dark' : 'light']}},
+            ],
         },
     });
     // In 3D, the terrain and the sky; each point symbol on a leader line, clear of the ground, unless Settings says not.
@@ -201,6 +206,7 @@ function mapLibreEngine(
         setDarkBasemap: (d) => {
             if (!map.getLayer('osm')) return;
             for (const [k, v] of Object.entries(RASTER_PAINT[d ? 'dark' : 'light'])) map.setPaintProperty('osm', k as 'raster-contrast', v);
+            if (map.getLayer('backdrop')) map.setPaintProperty('backdrop', 'background-color', backdropColor(target, d));
             if (tilted) paintTerrain(map, d);
         },
         refresh: () => renderer.refresh(),
@@ -227,6 +233,12 @@ const HILLSHADE = {
     dark: {'hillshade-exaggeration': 0.45, 'hillshade-shadow-color': '#000000', 'hillshade-highlight-color': '#5a6b7d', 'hillshade-accent-color': '#10161d'},
     light: {'hillshade-exaggeration': 0.35, 'hillshade-shadow-color': '#3d4a57', 'hillshade-highlight-color': '#ffffff', 'hillshade-accent-color': '#5d6b78'},
 } as const;
+
+/** The map's backdrop: the container's own background, or the page's light or dark map colour. */
+function backdropColor(target: HTMLElement, dark: boolean): string {
+    const bg = getComputedStyle(target).backgroundColor;
+    return bg && bg !== 'transparent' && !/rgba(.*,s*0)$/.test(bg) ? bg : dark ? '#1a1f27' : '#ffffff';
+}
 
 function addTerrain(map: maplibregl.Map, dark: boolean): void {
     // Two sources over the same tiles, as MapLibre advises: one shared steps the shading at tile seams.

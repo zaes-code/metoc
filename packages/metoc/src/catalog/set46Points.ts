@@ -23,10 +23,13 @@ const line = (d: string, width = 1.6): GlyphPart => ({d, width});
 const solid = (d: string): GlyphPart => ({d, fill: 'main'});
 const v = (label: string, placeholder: string) => ({label, placeholder});
 
-/** Chart blues and browns the standard names. */
-const WATER_BLUE = 'rgb(0, 191, 255)' as const;
+/** Chart blues, browns and the light grey the standard's drawings use. */
+const WATER_BLUE = 'rgb(0, 204, 255)' as const;
 const DEEP_BLUE = 'rgb(0, 0, 255)' as const;
-const DARK_BROWN = 'rgb(153, 51, 0)' as const;
+const DARK_BROWN = 'rgb(148, 48, 0)' as const;
+const TAN = 'rgb(210, 176, 106)' as const;
+/** The drawings' light grey; the dark grey (128, 128, 128) is the `gray` role. */
+const LIGHT_GRAY = 'rgb(192, 192, 192)' as const;
 
 /** Three staggered strokes: open water, in the ice-concentration symbols. */
 const WATER_LINES = line('M1 9H9M3 12H11M1 15H9', 1.4);
@@ -36,8 +39,21 @@ const head = (x: number, y: number, dir = 1): GlyphPart => solid(`M${x} ${y}L${x
 const ANCHOR = [line('M12 3.5V20.5M7.5 6.5H16.5', 2), line('M4 14.5Q4.5 20.5 12 20.5Q19.5 20.5 20 14.5', 2)];
 /** A dotted outline: the "black dotted outline" of the hazard fills. */
 const dotted = (d: string, fill: `rgb(${string})`): GlyphPart[] => [{d, fill}, {d, stroke: 'black', width: 1, dash: [0.9, 0.9]}];
+/**
+ * Three breaking-wave curls, each rising from its trough to a crest that rolls over forward and
+ * hooks back under itself before the next trough: the eddies and water-turbulence symbol.
+ */
+const CURLS = [1, 8.1, 15.2]
+    .map(
+        (x) =>
+            `M${x} 15.4C${x + 2} 14.2 ${x + 3.5} 9.2 ${x + 5} 8.5C${x + 6.2} 8 ${x + 6.6} 9.6 ${x + 5.8} 10.4C${x + 5.2} 11 ${x + 5.3} 11.6 ${x + 5.8} 12.2L${x + 7.2} 15.4`,
+    )
+    .join('');
+/** A kelp frond: a stem drawn left to right, rising at its tip, with four branches off it. */
+const KELP_FROND =
+    'M1 9.7C4 10.5 8 11.3 10.3 12C13 12.8 15 12.8 17.5 12.7C20.5 12.6 22 12.5 23 11.2M1.9 12L5.3 10.6M4.3 14.7C6.5 13.3 8.5 12.4 10.5 12.1M10.3 8.5C11.5 9.5 12.5 11.5 14.8 12.4M12 15.5C13.5 14 15 13 17 12.8';
 /** Bottom characteristic abbreviations, as chart type. */
-const abbrev = (text: string): GlyphDef => g({text, x: 12, y: 12.5, size: 13});
+const abbrev = (text: string): GlyphDef => g({text, x: 12, y: 12.5, size: 13, italic: true, serif: true});
 
 export const SET46_POINT_SPECS = [
     // Ice systems (Point3).
@@ -50,28 +66,31 @@ export const SET46_POINT_SPECS = [
     metocSpec('Growler', 'Icebergs - Growler', ICE, 46, '110107', 'Point3', ['black'], {glyph: g(line('M7 8H17L20 17H4Z'))}),
     metocSpec('ManyGrowlers', 'Icebergs - Many Growlers', ICE, 46, '110108', 'Point3', ['black'], {glyph: g(solid('M7 8H17L20 17H4Z'))}),
     metocSpec('Floeberg', 'Icebergs - Floeberg', ICE, 46, '110109', 'Point3', ['black'], {
-        glyph: g(line('M5 20.5L12 6L19 20.5Z'), solid('M12 6L14.9 12H9.1Z'), line('M3 12H21')),
+        // "Black top with white bottom": the triangle is filled white below the line.
+        glyph: g({d: 'M5 20.5L12 6L19 20.5Z', fill: 'white', stroke: 'main', width: 1.6}, solid('M12 6L14.9 12H9.1Z'), line('M3 12H21')),
     }),
     metocSpec('IceIsland', 'Icebergs - Ice Island', ICE, 46, '110110', 'Point3', ['black'], {
         glyph: g(
-            line('M7 4H17L22 12L17 20H7L2 12Z', 1.4),
+            // "White hexagon/black hatches".
+            {d: 'M7 4H17L22 12L17 20H7L2 12Z', fill: 'white', stroke: 'main', width: 1.4},
             line('M5 8L11 20M7 4L15 20M11 4L18 18M15 4L20 14M3.5 14.5L6 20', 0.8),
             line('M19 8L13 20M17 4L9 20M13 4L6 18M9 4L4 14M20.5 14.5L18 20', 0.8),
         ),
     }),
-    metocSpec('BergyWater', 'Ice Concentration - Bergy Water', ICE, 46, '110201', 'Point3', ['black'], {glyph: g(WATER_LINES, line('M13 17L18 8L23 17Z'))}),
+    metocSpec('BergyWater', 'Ice Concentration - Bergy Water', ICE, 46, '110201', 'Point3', ['black'], {glyph: g(line('M1 9.7H8.2M5.2 12H12.6M1 14.2H8.2', 1.4), line('M11.1 16.4L17 7.6L22.9 16.4Z'))}),
     metocSpec('WaterWithRadarTargets', 'Ice Concentration - Water with Radar Targets', ICE, 46, '110202', 'Point3', ['black'], {
         glyph: g(WATER_LINES, {circle: [18, 12, 4.5], width: 1.4}, line('M14.8 8.8L21.2 15.2M21.2 8.8L14.8 15.2', 1.4)),
     }),
     metocSpec('IceFree', 'Ice Concentration - Ice Free', ICE, 46, '110203', 'Point3', ['black'], {glyph: g(line('M5 9H14M9 12H19M5 15H14', 1.4))}),
-    metocSpec('IceConvergence', 'Dynamic Processes - Convergence', ICE, 46, '110301', 'Point3', ['black'], {glyph: g(line('M2 12H9', 2.4), head(12, 12), line('M22 12H15', 2.4), head(12, 12, -1))}),
+    metocSpec('IceConvergence', 'Dynamic Processes - Convergence', ICE, 46, '110301', 'Point3', ['black'], {glyph: g(line('M2 12H9.3', 1.3), solid('M11.2 12L8.9 10.7V13.3Z'), line('M22 12H14.7', 1.3), solid('M12.7 12L15.1 10.7V13.3Z'))}),
     metocSpec('IceDivergence', 'Dynamic Processes - Divergence', ICE, 46, '110302', 'Point3', ['black'], {glyph: g(line('M11 12H5', 2.4), head(2, 12, -1), line('M13 12H19', 2.4), head(22, 12))}),
     metocSpec('IceShearing', 'Dynamic Processes - Shearing or Shear Zone', ICE, 46, '110303', 'Point3', ['black'], {
         glyph: g(line('M5 9H16', 2.4), head(20, 9), line('M19 15H8', 2.4), head(4, 15, -1)),
     }),
     metocSpec('IceDrift', 'Dynamic Processes - Ice Drift (Direction)', ICE, 46, '110304', 'Point3', ['black'], {
         glyph: g(line('M3 12H16', 2.4), head(21, 12)),
-        note: 'Drawn pointing east; the standard gives no direction field for it.',
+        oriented: true,
+        note: 'Drawn pointing east, turned by the operator to the drift direction.',
     }),
     metocSpec('SeaIce', 'Sea Ice', ICE, 46, '110400', 'Point3', ['black'], {glyph: g({circle: [12, 12, 2.6], fill: 'main'})}),
     metocSpec('IceThicknessObserved', 'Sea Ice - Ice Thickness (Observed)', ICE, 46, '110401', 'Point3', ['black'], {
@@ -85,18 +104,19 @@ export const SET46_POINT_SPECS = [
     metocSpec('MeltPuddles', 'Sea Ice - Melt Puddles or Flooded Ice', ICE, 46, '110403', 'Point3', ['black'], {glyph: g(line('M2.5 9H21.5'), line('M6.5 9A5.5 5.5 0 0 0 17.5 9'))}),
     metocSpec('SnowCover', 'Snow Cover', ICE, 46, '110700', 'Point3', ['black'], {glyph: g(line('M15.5 2.5C6.5 4.5 6.5 19.5 15.5 21.5C11.5 17 11.5 7 15.5 2.5Z'))}),
     metocSpec('Sastrugi', 'Snow Cover - Sastrugi (with Orientation)', ICE, 46, '110701', 'Point3', ['black'], {
+        oriented: true,
         glyph: g(line('M4 21C4.5 12.5 19.5 12.5 20 21C17 17.5 7 17.5 4 21Z'), line('M12 14V3', 1.4), solid('M12 2L14 5.5H10Z')),
     }),
     metocSpec('RidgesHummocks', 'Topographical Features - Ridges or Hummocks', ICE, 46, '110801', 'Point3', ['black'], {
         glyph: g(solid('M3 17L7.5 8.5L12 17ZM12 17L16.5 8.5L21 17Z'), line('M3 20H21')),
     }),
-    metocSpec('Rafting', 'Topographical Features - Rafting', ICE, 46, '110802', 'Point3', ['black'], {glyph: g(line('M2 19H7V6H11V19H14V6H18V19H22'))}),
+    metocSpec('Rafting', 'Topographical Features - Rafting', ICE, 46, '110802', 'Point3', ['black'], {glyph: g(line('M1 18.4H5.4V5.7H9.9V18.4H14.1V5.7H18.7V18.4H23'))}),
     metocSpec('JammedBrashBarrier', 'Topographical Features - Jammed Brash Barrier', ICE, 46, '110803', 'Point3', ['black'], {
         glyph: g(solid('M3.5 6H12L7.75 14ZM12 6H20.5L16.25 14Z'), line('M3.5 18H20.5')),
     }),
 
     // Hydrography: depth, ports and harbours (Point1).
-    metocSpec('Soundings', 'Depth - Soundings', DEP, 46, '120101', 'Point3', ['gray'], {
+    metocSpec('Soundings', 'Depth - Soundings', DEP, 46, '120101', 'Point3', [LIGHT_GRAY], {
         valueField: v('Depth', '63'),
         glyph: g({text: '$value', x: 12, y: 12.5, size: 13}),
         note: 'The standard sets the decimal as a subscript (6 over 3); the value is written as entered.',
@@ -108,10 +128,15 @@ export const SET46_POINT_SPECS = [
     metocSpec('FishingHarbor', 'Ports and Harbors - Fishing Harbor - Point', POR, 46, '120309', 'Point1', ['magenta'], {
         glyph: g(line('M6 12C9.5 6.5 16.5 6.5 20.5 12C16.5 17.5 9.5 17.5 6 12ZM6 12L2.5 8.5V15.5Z', 1.4), line('M16.5 9.5Q19 12 16.5 14.5', 1.2), line('M5 5.5Q12 1.5 19 5.5M5 18.5Q12 22.5 19 18.5', 1.4)),
     }),
-    metocSpec('FishWeirs', 'Ports and Harbors - Fish Weirs - Point', POR, 46, '120310', 'Point1', ['gray'], {
-        glyph: g(line('M3 3H21V21H3ZM3 9H21M8 3V21M16 3V21', 1.2), line('M7 14C10 10 15 10 18 14C15 18 10 18 7 14ZM7 14L5 12V16Z', 1.2)),
+    metocSpec('FishWeirs', 'Ports and Harbors - Fish Weirs - Point', POR, 46, '120310', 'Point1', [LIGHT_GRAY], {
+        // A net open at the sides, three stakes down from its top and three up from its bottom,
+        // and a fish across the middle whose tail crosses where its two sides meet.
+        glyph: g(
+            line('M2 9.2V3.8H22V9.2M2 14.9V20.3H22V14.9M7.1 3.8V9.2M12 3.8V9.2M16.8 3.8V9.2M7.1 14.9V20.3M12 14.9V20.3M16.8 14.9V20.3', 1.2),
+            line('M3.8 14.8Q13.1 3.8 20.3 12M3.8 9.4Q13.1 20.2 20.3 12', 1.2),
+        ),
     }),
-    metocSpec('FishStakes', 'Ports and Harbors - Fish Stakes - Point', POR, 46, '120311', 'Point1', ['gray'], {glyph: g(line('M6 4V18M9 20H20', 1.6))}),
+    metocSpec('FishStakes', 'Ports and Harbors - Fish Stakes - Point', POR, 46, '120311', 'Point1', [LIGHT_GRAY], {glyph: g(line('M3 5V19M6.6 19H21', 1.6))}),
     metocSpec('LandingPlace', 'Facilities - Landing Place', POR, 46, '120315', 'Point1', ['magenta'], {
         glyph: g({circle: [12, 12, 9.5], width: 1.6}, line('M12.5 3.5V17M12.5 4.5L19.5 15L12.5 16M3.5 17H20.5', 1.4), line('M12 6Q5 10 5 16H12', 1.4)),
     }),
@@ -140,14 +165,31 @@ export const SET46_POINT_SPECS = [
     metocSpec('PerchesStakesPoint', 'Aids to Navigation - Perches/Stakes - Point', NAV, 46, '120404', 'Point1', ['black'], {glyph: g({circle: [12, 12, 5], fill: 'main'})}),
     metocSpec('NavigationLight', 'Aids to Navigation - Light', NAV, 46, '120406', 'Point1', ['magenta'], {glyph: g(solid('M4 3L20 15A3.6 3.6 0 1 1 14.8 19.6Z'))}),
     metocSpec('LightVessel', 'Aids to Navigation - Light Vessel/Light Ship', NAV, 46, '120408', 'Point1', ['black'], {
+        // A hull with an upswept deck, three masts (the middle one tall, with its light), short
+        // strakes inside the bow and stern, on a waterline with the position circle.
         glyph: g(
-            line('M2 12Q4 17 6 17H18Q20 17 22 12M5 14H19M2 18.5H22', 1.4),
-            line('M8 14V7M12 14V3.5M16 14V7M10.5 4.5H13.5', 1.4),
-            {circle: [12, 18.5, 1.8], fill: 'halo', stroke: 'main', width: 1.2},
+            line('M2 11.9Q4 13 6.8 13H17.6Q20 13 22 11.9M2.7 12.5L4.2 16.9M22 11.9L19.9 16.9M3.3 14.5H6.4M17.6 14.5H20.9', 1.2),
+            line('M6.8 13V6.7M17.6 13V6.7M12 13V4.3', 1.2),
+            solid('M11.15 5H12.85V5.8H11.15Z'),
+            line('M1.5 17.1H22.5', 1.4),
+            {circle: [12, 17.7, 2.1], fill: 'halo', stroke: 'main', width: 1.2},
         ),
     }),
     metocSpec('Lighthouse', 'Aids to Navigation - Lighthouse', NAV, 46, '120409', 'Point1', ['black'], {
-        glyph: g(line('M10 9.5L8 21M14 9.5L16 21M4 21H20M10.5 14H13.5', 1.4), {circle: [12, 7.5, 2.2], width: 1.4}, line('M12 4V1.5M8.5 5.5L6.5 3.5M15.5 5.5L17.5 3.5M7.5 8H5M16.5 8H19', 1.2)),
+        // A light with nine rays over its upper half, on a tapering tower standing on a base bar.
+        glyph: g(
+            line('M9.3 9.9L7.3 21.8M14.4 9.9L16.9 21.8', 1.3),
+            line('M2.6 22.3H21.4', 1.8),
+            {circle: [12, 7.9, 2.5], width: 1.3},
+            line(
+                Array.from({length: 9}, (_, i) => {
+                    const a = (i * Math.PI) / 8;
+                    const [c, sn] = [Math.cos(a), Math.sin(a)];
+                    return `M${(12 - 3.4 * c).toFixed(2)} ${(7.9 - 3.4 * sn).toFixed(2)}L${(12 - 6.9 * c).toFixed(2)} ${(7.9 - 6.9 * sn).toFixed(2)}`;
+                }).join(''),
+                1.2,
+            ),
+        ),
     }),
 
     // Dangers and hazards (Point1).
@@ -157,19 +199,19 @@ export const SET46_POINT_SPECS = [
     metocSpec('RockAwashed', 'Dangers/Hazards - Rock Awashed', HAZ, 46, '120502', 'Point1', ['black'], {glyph: g(line('M7 3.5L17 20.5M17 3.5L7 20.5M3.5 12H20.5', 1.4))}),
     metocSpec('FoulGroundPoint', 'Dangers/Hazards - Foul Ground - Point', HAZ, 46, '120504', 'Point1', ['gray'], {glyph: g(line('M9.5 4L8.5 20M15.5 4L14.5 20M5 9H19.5M4.5 15H19', 1.4))}),
     metocSpec('KelpPoint', 'Dangers/Hazards - Kelp/Seaweed - Point', HAZ, 46, '120506', 'Point1', ['gray'], {
-        glyph: g(line('M2 12.5C8 11.5 14 13.5 22 11M6 12.2L3 9M6 12.2L4 15.5M12.5 12.6L9.5 8.5M16.5 12.2L19.5 9', 1.4)),
+        glyph: g(line(KELP_FROND, 1.4)),
     }),
     metocSpec('SnagsStumps', 'Dangers/Hazards - Snags/Stumps', HAZ, 46, '120508', 'Point1', ['black'], {
         glyph: g(dotted('M2 12A10 6.5 0 1 0 22 12A10 6.5 0 1 0 2 12Z', WATER_BLUE)),
     }),
-    metocSpec('WreckUncovers', 'Dangers/Hazards - Wreck (Uncovers)', HAZ, 46, '120509', 'Point1', ['gray'], {
-        glyph: g(solid('M3.5 9L16.5 17.5H10.5Z'), line('M3 17.5H21M15 16L18.5 6', 1.4), {circle: [12.5, 18, 1.6], fill: 'main'}),
+    metocSpec('WreckUncovers', 'Dangers/Hazards - Wreck (Uncovers)', HAZ, 46, '120509', 'Point1', [LIGHT_GRAY], {
+        glyph: g(solid('M3.8 8L18 16.7H9.9Z'), line('M1.5 16.7H22.5', 1.2), line('M12.4 13L16.8 4.9', 1.4), solid('M9.9 16.7A2 2 0 0 0 13.9 16.7Z')),
     }),
     metocSpec('WreckSubmerged', 'Dangers/Hazards - Wreck (Submerged)', HAZ, 46, '120510', 'Point1', ['black'], {
         glyph: g(dotted('M2 12A10 6.5 0 1 0 22 12A10 6.5 0 1 0 2 12Z', WATER_BLUE), line('M4 12H20M8 8.5V15.5M12 8.5V15.5M16 8.5V15.5', 1.4)),
     }),
     metocSpec('EddiesOverfalls', 'Dangers/Hazards - Eddies/Overfalls/Tide Rips', HAZ, 46, '120513', 'Point1', ['gray'], {
-        glyph: g(line('M2 17C3 8 8 7 8 12C8 16 5 15 7 11C9 7 13 7 13 12C13 16 10 15 12 11C14 7 18 7 18 12C18 16 15 15 17 11C18 9 21 8 22 9.5', 1.3)),
+        glyph: g(line(CURLS, 1.2)),
     }),
 
     // Bottom characteristics and qualifying terms (Point3): the chart abbreviations.
@@ -190,20 +232,21 @@ export const SET46_POINT_SPECS = [
 
     // Tide and current (Point1).
     metocSpec('WaterTurbulence', 'Tide and Current - Water Turbulence', TID, 46, '120701', 'Point1', ['gray'], {
-        glyph: g(line('M2 17C3 8 8 7 8 12C8 16 5 15 7 11C9 7 13 7 13 12C13 16 10 15 12 11C14 7 18 7 18 12C18 16 15 15 17 11C18 9 21 8 22 9.5', 1.3)),
+        glyph: g(line(CURLS, 1.2)),
     }),
     metocSpec('TideDataPoint', 'Tide and Current - Tide Data Point', TID, 46, '120704', 'Point1', ['gray'], {glyph: g(line('M12 2.5L20 12L12 21.5L4 12Z', 1.6))}),
     metocSpec('TideGauge', 'Tide and Current - Tide Gauge', TID, 46, '120705', 'Point1', ['magenta'], {
-        glyph: g({d: 'M1.5 7H22.5V17H1.5Z', stroke: 'brown', width: 1.4}, {text: 'SS', x: 12, y: 12.3, size: 9}),
+        glyph: g({d: 'M3 6.25H21V17.75H3Z', stroke: TAN, width: 1.4}, {text: 'SS', x: 12, y: 12.3, size: 12.5}),
     }),
 
     // Man-made structures (Point1).
-    metocSpec('Ford', 'Man-Made Structures - Ford', MAN, 46, '160400', 'Point1', ['black'], {glyph: g(solid('M7 3H17L12 11ZM7 21H17L12 13Z'))}),
+    metocSpec('Ford', 'Man-Made Structures - Ford', MAN, 46, '160400', 'Point1', ['black'], {glyph: g(solid('M8 2H16L12 12ZM8 22H16L12 12Z'))}),
     metocSpec('Lock', 'Man-Made Structures - Lock', MAN, 46, '160500', 'Point1', ['black'], {glyph: g(line('M6 6L18 12L6 18', 1.8))}),
     metocSpec('OilGasRig', 'Man-Made Structures - Oil/Gas Rig', MAN, 46, '160600', 'Point1', ['black'], {
-        glyph: g(line('M7.5 21.5L10 3H14L16.5 21.5M9.2 9H14.8M8.5 15H15.5M10 3L15.3 15M14 3L8.7 15M9.2 9L16 21.5M14.8 9L8 21.5', 1.2)),
+        // A tapering tower with a top bar and two crossed bays, as drawn.
+        glyph: g(line('M4.5 22L7.8 2H16.2L19.5 22M7.25 5.3L18.2 14.1M16.75 5.3L5.8 14.1M5.8 14.1L19.5 22M18.2 14.1L4.5 22', 1.2)),
     }),
     metocSpec('PilePost', 'Man-Made Structures - Pile/Piling/Post', MAN, 46, '160900', 'Point1', ['black'], {glyph: g({circle: [12, 12, 4], fill: 'main'})}),
 ] as const;
 
-export {DEEP_BLUE, WATER_BLUE};
+export {DEEP_BLUE, KELP_FROND, LIGHT_GRAY, TAN, WATER_BLUE};

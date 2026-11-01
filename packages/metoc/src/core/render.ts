@@ -13,15 +13,18 @@
 import type {Feature, FeatureCollection, LineString, Point, Polygon} from 'geojson';
 import {getMetocSpec, isMetocGraphicName, minimumPoints} from './catalog.js';
 import {getMetocConfig} from './config.js';
-import {boundsOf, catmullRom, catmullRomClosed, fromMercator, type Paint, type PaintContext, paintsToGeoJSON, type ProjectedPosition, type SymbolPainter, toMercator, uprightAngle, walker, pointSizeScale, pointZoomFactor} from '@zaes/symbology-engine';
+import {catmullRom, catmullRomClosed, fromMercator, type Paint, type PaintContext, paintsToGeoJSON, pointInRing, type ProjectedPosition, type SymbolPainter, toMercator, uprightAngle, walker, pointSizeScale, pointZoomFactor} from '@zaes/symbology-engine';
 import {drawnPoints, type MetocFeature, type MetocProperties} from './types.js';
-import {interiorPoint} from '../symbology/areaPaints.js';
+import {dateTimeAnchor, interiorPoint} from '../symbology/areaPaints.js';
 import {painterFor} from '../symbology/paints.js';
+import {displayedValue, withDisplayedValue} from '../symbology/values.js';
 
 export {paintsToGeoJSON};
 
 /** Points per segment of the curve: 8 showed facets where a long segment bent hard. */
 const CURVE_SAMPLES = 16;
+/** The smallest a point's value is drawn, in CSS pixels; smaller, it is left out. */
+const MIN_POINT_LABEL_PX = 5;
 
 /**
  * The painted line in projected meters: the drawn points, smoothed when the config says so. With
@@ -65,19 +68,41 @@ export function paintMetocPath(props: MetocProperties, projected: readonly Proje
     // a scaled resolution scales the shapes about the anchor; text sizes and stroke widths are pixels
     // a resolution does not touch, so they are scaled after.
     const scale = spec.geometry === 'point' ? metocPointScale(props, context.resolution) : 1;
-    let paints = painter({spec, props, walker: w, resolution: context.resolution * scale});
+    let paints = painter({spec, props: withDisplayedValue(spec, props), walker: w, resolution: context.resolution * scale});
     if (scale !== 1) paints = paints.map((p) => scalePixels(p, scale));
+    // A point's value shrinks with it, and is dropped once too small to read, as an area's label is
+    // (below the smallest size a small symbol writes it at full size).
+    if (spec.geometry === 'point') paints = paints.filter((p) => !p.text || p.text.symbol || p.text.sizePx >= MIN_POINT_LABEL_PX);
     // A turned point symbol, turned about its anchor. A directional one points by its own data.
     const turn = spec.geometry === 'point' && !spec.directional ? (props.rotation ?? 0) : 0;
-    if (turn) paints = paints.map((p) => rotated(p, projected[0], turn));
+    if (turn) {
+        const rings = closedRings(paints);
+        paints = paints.map((p) => rotated(p, projected[0], turn, !!p.text && (!!p.text.symbol || rings.some((r) => pointInRing(p.geometry.coordinates as ProjectedPosition, r)))));
+    }
     return withLabelStyle(paints);
 }
 
+/** The closed outlines among a symbol's marks: its filled shapes' rings, and strokes that close on themselves (a box). */
+function closedRings(paints: readonly Paint[]): ProjectedPosition[][] {
+    const out: ProjectedPosition[][] = [];
+    for (const p of paints) {
+        if (p.text) continue;
+        if (p.geometry.type === 'Polygon') out.push(p.geometry.coordinates[0]);
+        else if (p.geometry.type === 'LineString') {
+            const c = p.geometry.coordinates;
+            if (c.length >= 4 && c[0][0] === c[c.length - 1][0] && c[0][1] === c[c.length - 1][1]) out.push(c);
+        }
+    }
+    return out;
+}
+
 /**
- * A mark turned `degrees` clockwise about `o`. A symbol's own text (an H) turns with it; a label
- * moves with the symbol but keeps reading the way it did, so a value stays legible.
+ * A mark turned `degrees` clockwise about `o`. Text that is part of the picture turns with it — a
+ * symbol's own text (an H), and a value written inside the symbol's own outline (a box, an
+ * ellipse), which reads as part of it. A label beside the symbol moves with it but keeps reading
+ * the way it did, so it stays legible.
  */
-function rotated(p: Paint, o: ProjectedPosition, degrees: number): Paint {
+function rotated(p: Paint, o: ProjectedPosition, degrees: number, turnText: boolean): Paint {
     const a = (degrees * Math.PI) / 180;
     const cos = Math.cos(a);
     const sin = Math.sin(a);
@@ -86,7 +111,7 @@ function rotated(p: Paint, o: ProjectedPosition, degrees: number): Paint {
     const g = p.geometry;
     const geometry =
         g.type === 'Point' ? {type: g.type, coordinates: turn(g.coordinates)} : g.type === 'LineString' ? {type: g.type, coordinates: g.coordinates.map(turn)} : {type: g.type, coordinates: g.coordinates.map((r) => r.map(turn))};
-    return {...p, geometry, ...(p.text?.symbol ? {text: {...p.text, rotation: p.text.rotation - a}} : {})} as Paint;
+    return {...p, geometry, ...(p.text && turnText ? {text: {...p.text, rotation: p.text.rotation - a}} : {})} as Paint;
 }
 
 /**
@@ -175,7 +200,7 @@ export function renderMetocGraphic(feature: MetocFeature): RenderedMetocGraphic 
     const props = (role: MetocRole, extra: Record<string, unknown> = {}) => ({metoc, role, ...extra});
 
     const labels: Feature<Point>[] = [];
-    const value = metoc.value?.trim();
+    const value = displayedValue(spec, metoc.value)?.trim();
     if (value && spec.valueField && spec.geometry === 'line' && path.length >= 2) {
         const w = walker(path);
         for (const d of [0, w.length / 2, w.length]) {
@@ -195,7 +220,7 @@ export function renderMetocGraphic(feature: MetocFeature): RenderedMetocGraphic 
     if (spec.geometry === 'area' && path.length >= 4) {
         // Where an area's labels go, as the painter places them, minus the screen-sized offsets a
         // view would add: the freeform value at a point well inside, the wind radius at the top
-        // of the outline, the date-time at the upper-left corner of the bounds.
+        // of the outline, the date-time at the outline's upper-left edge.
         const label = (at: ProjectedPosition, text: string, extra: Record<string, unknown> = {}) =>
             labels.push({type: 'Feature', geometry: {type: 'Point', coordinates: fromMercator(at)}, properties: props('label', {text, rotation: 0, ...extra})});
         if (value && spec.valueField) {
@@ -203,10 +228,7 @@ export function renderMetocGraphic(feature: MetocFeature): RenderedMetocGraphic 
             label(spec.dateTimeLabel ? top : interiorPoint(path), value);
         }
         const dtg = metoc.dtg?.trim();
-        if (dtg && spec.dateTimeLabel) {
-            const [x0, , , y1] = boundsOf(path);
-            label([x0, y1], dtg, {boxed: true});
-        }
+        if (dtg && spec.dateTimeLabel) label(dateTimeAnchor(path), dtg, {boxed: true});
     }
 
     return {

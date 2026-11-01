@@ -24,6 +24,14 @@ const HEIGHT_IN_HUNDREDS_OF_FEET: MetocGraphicName[] = [
 const ENDS_AND_MIDDLE: MetocGraphicName[] = [N.IsobarSurface, N.Isotherm, N.Isotach, N.Isodrosotherm, N.Thickness];
 /** "… at each end of the line and at regular intervals along the line." */
 const ENDS_AND_INTERVALS: MetocGraphicName[] = [N.DepthCurve, N.DepthContour];
+/** Soundings: the depth figure is the symbol itself (Table M-III draws "6" over "3", no other mark). */
+const THE_VALUE_IS_THE_SYMBOL: MetocGraphicName[] = [N.Soundings];
+/**
+ * Ice thickness: the row documents no text and draws an empty box ("Box with Black Outline" or
+ * "... Dashed Line"). The box is where a thickness goes, so the catalog offers one, written inside;
+ * with none the box is drawn empty.
+ */
+const VALUE_IN_THE_BOX: MetocGraphicName[] = [N.IceThicknessObserved, N.IceThicknessEstimated];
 
 const texts = (name: MetocGraphicName, points: number[][], value: string, resolution: number) =>
     paintMetocGraphic(metocFeature(name, points, {value}), {resolution})
@@ -40,6 +48,18 @@ describe('labels the standard documents', () => {
 
     it.each(ENDS_AND_MIDDLE)('%s writes its value at both ends and once in the middle', (name) => {
         expect(texts(name, [[-100, 40], [-95, 41], [-90, 40]], '1004', 1000)).toEqual(['1004', '1004', '1004']);
+    });
+
+    it.each(THE_VALUE_IS_THE_SYMBOL)('%s draws its depth as the symbol, and nothing without one', (name) => {
+        expect(getMetocSpec(name).valueField?.label).toBe('Depth');
+        expect(texts(name, [[-70, 40]], '63', 1000)).toEqual(['63']);
+        expect(texts(name, [[-70, 40]], '', 1000)).toEqual([]);
+    });
+
+    it.each(VALUE_IN_THE_BOX)('%s writes a thickness inside its box only when one is given', (name) => {
+        expect(getMetocSpec(name).valueField?.label).toMatch(/thickness/i);
+        expect(texts(name, [[-60, 75]], '30', 1000)).toEqual(['30']);
+        expect(texts(name, [[-60, 75]], '', 1000)).toEqual([]);
     });
 
     it.each(ENDS_AND_INTERVALS)('%s writes its depth at both ends and at regular intervals', (name) => {

@@ -148,6 +148,113 @@ describe('which side (Appendix M: the point order sets the pips)', () => {
     });
 });
 
+describe('Table M-II’s line drawings', () => {
+    const res = 10;
+    const strokes = (paints: Paint[]) => paints.filter((p) => p.role === 'decoration' && p.geometry.type === 'LineString').map((p) => (p.geometry as {coordinates: P[]}).coordinates);
+    const ringOf = (p: Paint): P[] => (p.geometry.type === 'Polygon' ? p.geometry.coordinates[0] : (p.geometry as {coordinates: P[]}).coordinates);
+    const centreOf = (p: Paint) => {
+        const ring = ringOf(p);
+        return ring.reduce((a, c) => [a[0] + c[0] / ring.length, a[1] + c[1] / ring.length], [0, 0]);
+    };
+    /** Pips (not separator dots) in order from the first point, which is on the right of a westward line. */
+    const pipsFromStart = (paints: Paint[]) =>
+        paints
+            .filter((p) => p.role === 'decoration' && ringOf(p).length > 3)
+            .filter((p) => {
+                const xs = ringOf(p).map((c) => c[0]);
+                return (Math.max(...xs) - Math.min(...xs)) / res > 5;
+            })
+            .sort((a, b) => centreOf(b)[0] - centreOf(a)[0]);
+
+    it('crosses a frontolysis with a stroke leaning back, top left to bottom right, through a stub, whichever way it is drawn', () => {
+        for (const name of [N.ColdFrontolysis, N.WarmFrontolysis, N.OccludedFrontolysis, N.StationaryFrontolysis]) {
+            for (const points of [westward(600, res), westward(600, res).reverse()]) {
+                const paints = paintMetocPath({name}, points, {resolution: res});
+                const crosses = strokes(paints);
+                expect(crosses.length).toBeGreaterThan(0);
+                for (const [a, b] of crosses) {
+                    expect(Math.sign(b[0] - a[0]) * Math.sign(b[1] - a[1])).toBe(-1);
+                    // The stroke crosses the line itself: a short stub of line runs under its middle.
+                    const mid: P = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+                    expect(Math.abs(mid[1])).toBeLessThan(1e-6);
+                    const stub = paints.filter((p) => p.role === 'line').map((p) => (p.geometry as {coordinates: P[]}).coordinates).find((r) => Math.min(r[0][0], r[r.length - 1][0]) <= mid[0] && mid[0] <= Math.max(r[0][0], r[r.length - 1][0]));
+                    expect(stub).toBeDefined();
+                    expect(Math.abs(stub![0][0] - stub![stub!.length - 1][0]) / res).toBeLessThan(15);
+                }
+            }
+        }
+    });
+
+    it('starts occluded and stationary fronts with the triangle at the first point', () => {
+        for (const name of [N.OccludedFront, N.UpperOccludedFront, N.OccludedFrontolysis, N.StationaryFront, N.StationaryFrontogenesis, N.StationaryFrontolysis]) {
+            const first = pipsFromStart(paintMetocPath({name}, westward(600, res), {resolution: res}))[0];
+            expect(ringOf(first).length, name).toBe(4);
+        }
+        const first = pipsFromStart(paintMetocPath({name: N.StationaryFront}, westward(600, res), {resolution: res}))[0];
+        expect(first.fill!.color).toBe(DEFAULT_METOC_PALETTE.cold);
+    });
+
+    it('crosses an occluded frontolysis once a pair of pips', () => {
+        const paints = paintMetocPath({name: N.OccludedFrontolysis}, westward(800, res), {resolution: res});
+        const pips = pipsFromStart(paints).length;
+        expect(strokes(paints)).toHaveLength(Math.floor((pips - 1) / 2));
+    });
+
+    it('separates a stationary frontogenesis and frontolysis at both ends, in the colours their drawings use', () => {
+        // Frontogenesis: a dot takes the colour of the pip before it; frontolysis: a stroke the colour of the pip after it.
+        const dots = decorations(paintMetocPath({name: N.StationaryFrontogenesis}, westward(800, res), {resolution: res}))
+            .filter((p) => ringSizePx(p, res).w <= 5)
+            .sort((a, b) => centreOf(b)[0] - centreOf(a)[0]);
+        expect(centreOf(dots[0])[0] / res).toBeCloseTo(800, 0);
+        expect(centreOf(dots[dots.length - 1])[0] / res).toBeCloseTo(0, 0);
+        expect(dots.map((d) => d.fill!.color).slice(0, 3)).toEqual([DEFAULT_METOC_PALETTE.warm, DEFAULT_METOC_PALETTE.cold, DEFAULT_METOC_PALETTE.warm]);
+
+        const paints = paintMetocPath({name: N.StationaryFrontolysis}, westward(800, res), {resolution: res});
+        const crosses = paints.filter((p) => p.role === 'decoration' && p.geometry.type === 'LineString');
+        const x = (p: Paint) => ((p.geometry as {coordinates: P[]}).coordinates[0][0] + (p.geometry as {coordinates: P[]}).coordinates[1][0]) / 2;
+        crosses.sort((a, b) => x(b) - x(a));
+        expect(x(crosses[0]) / res).toBeCloseTo(800, 0);
+        expect(x(crosses[crosses.length - 1]) / res).toBeCloseTo(0, 0);
+        expect(crosses.map((c) => c.stroke!.color).slice(0, 3)).toEqual([DEFAULT_METOC_PALETTE.cold, DEFAULT_METOC_PALETTE.warm, DEFAULT_METOC_PALETTE.cold]);
+    });
+
+    it('swings a ridge axis’s zigzag equally either side of the traced axis', () => {
+        const ys = (paintMetocPath({name: N.RidgeAxis}, westward(600, res), {resolution: res})[0].geometry as {coordinates: P[]}).coordinates.map((c) => c[1]);
+        expect(Math.max(...ys)).toBeGreaterThan(0);
+        expect(Math.max(...ys)).toBeCloseTo(-Math.min(...ys), 6);
+    });
+
+    it('breaks instability and shear lines at the crests and puts the dots there', () => {
+        for (const [name, perBreak] of [
+            [N.InstabilityLine, 2],
+            [N.ShearLine, 1],
+        ] as const) {
+            const paints = paintMetocPath({name}, westward(600, res), {resolution: res});
+            const runs = paints.filter((p) => p.role === 'line');
+            const dots = decorations(paints);
+            expect(dots.length).toBe((runs.length - 1) * perBreak);
+            const crest = Math.max(...runs.flatMap((r) => (r.geometry as {coordinates: P[]}).coordinates.map((c) => Math.abs(c[1]))));
+            // Each dot sits out on a crest or trough, not on the axis.
+            for (const d of dots) expect(Math.abs(centreOf(d)[1])).toBeGreaterThan(crest * 0.85);
+            // And each run starts and ends near a crest (or at an end of the line), never at an axis crossing mid-line.
+            for (const r of runs.slice(1)) expect(Math.abs((r.geometry as {coordinates: P[]}).coordinates[0][1])).toBeGreaterThan(crest * 0.85);
+        }
+    });
+
+    it('stands a convergence line’s strokes off it, alternately either side, touching it', () => {
+        const paints = paintMetocPath({name: N.ConvergenceLine}, westward(600, res), {resolution: res});
+        const marks = strokes(paints).sort((a, b) => b[0][0] - a[0][0]);
+        expect(marks.length).toBeGreaterThan(3);
+        marks.forEach(([onLine, off], i) => {
+            expect(Math.abs(onLine[1])).toBeLessThan(1e-6);
+            // The first stands right of the drawn direction (above a westward line), then they alternate.
+            expect(Math.sign(off[1])).toBe(i % 2 === 0 ? 1 : -1);
+            // Leaning back toward the first point.
+            expect(off[0]).toBeGreaterThan(onLine[0]);
+        });
+    });
+});
+
 describe('colour', () => {
     it('uses Table M-II’s colours', () => {
         const lineColor = (name: N) => paintMetocPath({name}, westward(400, 10), {resolution: 10}).find((p) => p.role === 'line')!.stroke!.color;

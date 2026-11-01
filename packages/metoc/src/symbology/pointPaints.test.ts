@@ -62,16 +62,25 @@ describe('wind barbs (Table M-I)', () => {
         expect(Math.abs(tip[1])).toBeLessThan(1e-6);
     });
 
-    it('puts the barbs on the left of the shaft in the north and the right in the south', () => {
-        const barbSide = (anchor: P) => {
-            const paints = paint(N.WindBarb, {windDirection: 0, windSpeed: 10}, anchor);
+    it('puts the barbs on the left of the shaft, looking down the wind, in the north and the right in the south', () => {
+        // The direction a full barb leaves the shaft, as (east, north) signs.
+        const barbLean = (windDirection: number, anchor: P) => {
+            const paints = paint(N.WindBarb, {windDirection, windSpeed: 10}, anchor);
             const barb = paints.filter((p) => p.role === 'decoration' && p.geometry.type === 'LineString')[1];
             const [a, b] = barb.geometry.coordinates as unknown as P[];
-            return Math.sign(b[0] - a[0]);
+            return [Math.sign(Math.round(b[0] - a[0])), Math.sign(Math.round(b[1] - a[1]))];
         };
-        // Shaft points north; left of it is west.
-        expect(barbSide([0, 1_000_000])).toBe(-1);
-        expect(barbSide([0, -1_000_000])).toBe(1);
+        const north: P = [0, 1_000_000];
+        const south: P = [0, -1_000_000];
+        // WMO and NWS (and MetPy's barbs): a north wind's barbs stand east of the shaft, a west
+        // wind's north of it, a south wind's west and an east wind's south.
+        expect(barbLean(0, north)[0]).toBe(1);
+        expect(barbLean(270, north)[1]).toBe(1);
+        expect(barbLean(180, north)[0]).toBe(-1);
+        expect(barbLean(90, north)[1]).toBe(-1);
+        // Mirrored south of the equator.
+        expect(barbLean(0, south)[0]).toBe(-1);
+        expect(barbLean(270, south)[1]).toBe(-1);
     });
 
     it('draws a pennant for 50 kt and an X for a missing speed', () => {

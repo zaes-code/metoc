@@ -97,7 +97,7 @@ export const METOC_EDITING: EditorFamily<'metoc', MetocProperties> = {
     painter: METOC_PAINTER,
     direction: (name) => (getMetocSpec(name).directional ? WIND_DIRECTION : undefined),
     // A station plot is laid out by the station model, which has no turn.
-    rotation: (name) => (getMetocConfig().allowPointRotation && name !== MetocGraphicName.StationPlot ? ROTATION : undefined),
+    rotation: (name) => ((getMetocConfig().allowPointRotation || getMetocSpec(name).oriented) && name !== MetocGraphicName.StationPlot ? ROTATION : undefined),
     size: () => SIZE,
     pickInside: (props) => props.filled === true,
     chrome: () => {

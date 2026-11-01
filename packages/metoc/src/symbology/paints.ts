@@ -77,11 +77,21 @@ interface PipMark {
 }
 
 interface FrontOptions {
-    /** The repeating marks, in order along the line. */
+    /** The repeating marks, in order along the line from its first point. */
     marks: PipMark[];
     hollow?: boolean;
     /** Frontogenesis: a dot between pips. Frontolysis: a crossing stroke. */
     separator?: 'dot' | 'cross';
+    /** A separator after every this many marks (default 1): an occluded frontolysis crosses once a pair. */
+    separatorEvery?: number;
+    /** A separator at each end as well, as the stationary fronts' drawings put one there. */
+    separatorEnds?: boolean;
+    /**
+     * Which mark a separator takes its colour from when the line is coloured by mark: the one
+     * after it in drawing order (stationary frontolysis) or the one before it (stationary
+     * frontogenesis), as Table M-II draws each.
+     */
+    separatorColor?: 'next' | 'previous';
     /** Stationary fronts colour each stretch of line like the pip on it. */
     colorLineByMark?: boolean;
 }
@@ -90,11 +100,19 @@ interface FrontOptions {
 const SINGLE_PIP_SPACING = 6;
 const ALTERNATING_PIP_SPACING = 3.5;
 
+/** A frontolysis' crossing stroke: its half length, the stub of line it crosses and the gap either side, in pip sizes. */
+const CROSS_HALF = 0.55;
+const CROSS_STUB_HALF = 0.45;
+const CROSS_GAP = 0.2;
+/** The crossing stroke's angle to the line. */
+const CROSS_ANGLE = (50 * Math.PI) / 180;
+
 function front(opts: FrontOptions): Painter {
     return (input) => {
         const {walker: w, resolution: res} = input;
         const sizePx = pipSize();
-        const spacingPx = sizePx * (opts.marks.length > 1 ? ALTERNATING_PIP_SPACING : SINGLE_PIP_SPACING);
+        const n = opts.marks.length;
+        const spacingPx = sizePx * (n > 1 ? ALTERNATING_PIP_SPACING : SINGLE_PIP_SPACING);
         const fit = decorationFit(w.length / res, spacingPx, sizePx);
         if (fit === 0) return plain(input);
 
@@ -102,14 +120,25 @@ function front(opts: FrontOptions): Painter {
         const slots = evenSlots(w.length, spacingPx * fit * res);
         const paints: Paint[] = [];
 
-        // Gaps in the line where a separator sits, half-way between pips.
+        // Separators sit half-way between pips, after every `separatorEvery` marks, and at the ends
+        // when asked. A dot sits in a gap in the line; a crossing stroke crosses a short stub of
+        // line with a gap either side, as Table M-II draws it.
         const gaps: [number, number][] = [];
         const separators: number[] = [];
         if (opts.separator) {
-            for (let i = 1; i < slots.count; i++) {
-                const at = i * slots.spacing;
-                separators.push(at);
-                gaps.push([at - size * 0.6, at + size * 0.6]);
+            const every = opts.separatorEvery ?? 1;
+            const first = opts.separatorEnds ? 0 : 1;
+            const last = opts.separatorEnds ? slots.count : slots.count - 1;
+            for (let j = first; j <= last; j++) {
+                if (j % every !== 0) continue;
+                const at = j * slots.spacing;
+                separators.push(j);
+                if (opts.separator === 'dot') gaps.push([at - size * 0.6, at + size * 0.6]);
+                else {
+                    const inner = size * CROSS_STUB_HALF;
+                    const outer = size * (CROSS_STUB_HALF + CROSS_GAP);
+                    gaps.push([at - outer, at - inner], [at + inner, at + outer]);
+                }
             }
         }
 
@@ -118,7 +147,7 @@ function front(opts: FrontOptions): Painter {
             for (let i = 0; i < slots.count; i++) {
                 const from = i * slots.spacing;
                 const to = from + slots.spacing;
-                const color = roleColor(input, opts.marks[i % opts.marks.length].role);
+                const color = roleColor(input, opts.marks[i % n].role);
                 const localGaps = gaps.filter(([a, b]) => b > from && a < to).map(([a, b]) => [Math.max(a, from), Math.min(b, to)] as [number, number]);
                 const sub = runsOutside(w, [[0, from], ...localGaps, [to, w.length]]);
                 for (const run of sub) paints.push(line(run, color));
@@ -128,7 +157,7 @@ function front(opts: FrontOptions): Painter {
         }
 
         for (let i = 0; i < slots.count; i++) {
-            const mark = opts.marks[i % opts.marks.length];
+            const mark = opts.marks[i % n];
             const at = (i + 0.5) * slots.spacing;
             const color = roleColor(input, mark.role);
             const ring =
@@ -136,17 +165,20 @@ function front(opts: FrontOptions): Painter {
             paints.push(opts.hollow ? hollowShape(ring, color) : solidShape(ring, color));
         }
 
-        for (const at of separators) {
-            const {point, dir} = w.at(at);
-            const color = opts.colorLineByMark ? roleColor(input, opts.marks[0].role) : mainColor(input);
+        for (const j of separators) {
+            const {point, dir} = w.at(j * slots.spacing);
+            const markIndex = opts.separatorColor === 'previous' ? (((j - 1) % n) + n) % n : j % n;
+            const color = opts.colorLineByMark ? roleColor(input, opts.marks[markIndex].role) : mainColor(input);
             if (opts.separator === 'dot') {
                 paints.push(solidShape(circleRing(point, size * 0.22), color));
             } else {
-                // A short stroke crossing the gap at sixty degrees, as Table M-II draws it.
-                const half = size * 0.7;
-                const c = Math.cos(Math.PI / 3);
-                const s = Math.sin(Math.PI / 3);
-                paints.push(stroke([offset(point, dir, -half * c, -half * s), offset(point, dir, half * c, half * s)], color));
+                // From ahead of the point on the right of the line to behind it on the left: on the
+                // page a stroke leaning back, top left to bottom right, whichever way the line was
+                // drawn, as the drawings show it.
+                const half = size * CROSS_HALF;
+                const c = Math.cos(CROSS_ANGLE);
+                const s = Math.sin(CROSS_ANGLE);
+                paints.push(stroke([offset(point, dir, half * c, -half * s), offset(point, dir, -half * c, half * s)], color));
             }
         }
         return paints;
@@ -155,26 +187,33 @@ function front(opts: FrontOptions): Painter {
 
 const cold = (side: 1 | -1 = 1): PipMark => ({kind: 'triangle', role: 'cold', side});
 const warm = (side: 1 | -1 = 1): PipMark => ({kind: 'semicircle', role: 'warm', side});
-const occludedTriangle: PipMark = {kind: 'triangle', role: 'occluded', side: 1};
-const occludedSemicircle: PipMark = {kind: 'semicircle', role: 'occluded', side: 1};
-// A stationary front's warm pips point one way and its cold pips the other (Table M-II).
-const stationary: PipMark[] = [warm(-1), cold(1)];
+// The drawings start at the first point (on the right: R before L) with the triangle: an occluded
+// front's triangle, then its semicircle; a stationary front's cold pip, then its warm one.
+const occluded: PipMark[] = [
+    {kind: 'triangle', role: 'occluded', side: 1},
+    {kind: 'semicircle', role: 'occluded', side: 1},
+];
+// A stationary front's cold pips point one way and its warm pips the other (Table M-II).
+const stationary: PipMark[] = [cold(1), warm(-1)];
 
 // ── pressure lines ─────────────────────────────────────────────────────────────
 
-/** Ridge axis: "a solid zigzag line", the zigzag "at regular intervals along the entire length". */
+/**
+ * Ridge axis: "a solid zigzag line" drawn "along the ridge axis", the zigzag "at regular intervals
+ * along the entire length". The teeth swing equally either side of the traced axis, so the axis is
+ * the zigzag's centre line, as drawn.
+ */
 const ridgeAxis: Painter = (input) => {
     const {walker: w, resolution: res} = input;
     const sizePx = pipSize();
     const fit = decorationFit(w.length / res, sizePx * 2.4, sizePx);
     if (fit === 0) return plain(input);
-    const slots = evenSlots(w.length, sizePx * 2.4 * fit * res);
-    const amp = sizePx * 0.8 * fit * res;
+    const steps = Math.max(2, Math.round(w.length / (sizePx * 1.2 * fit * res)));
+    const half = sizePx * 0.4 * fit * res;
     const pts: P[] = [];
-    for (let i = 0; i <= slots.count * 2; i++) {
-        const s = (i * slots.spacing) / 2;
-        const {point, dir} = w.at(s);
-        pts.push(offset(point, dir, 0, i % 2 === 1 ? amp : 0));
+    for (let i = 0; i <= steps; i++) {
+        const {point, dir} = w.at((i * w.length) / steps);
+        pts.push(offset(point, dir, 0, i % 2 === 1 ? half : -half));
     }
     return [line(pts, mainColor(input))];
 };
@@ -208,8 +247,8 @@ const squallLine: Painter = (input) => {
 };
 
 /**
- * Instability line (Line3) and shear line (Line4): a wavy line broken at each crossing of its
- * axis, with two dots (instability) or one (shear) in the break.
+ * Instability line (Line3) and shear line (Line4): a wavy line broken at each crest and trough,
+ * with two dots (instability) or one (shear) in the break, on the crest, as Table M-II draws them.
  */
 function dottedWave(dots: 1 | 2): Painter {
     return (input) => {
@@ -225,36 +264,52 @@ function dottedWave(dots: 1 | 2): Painter {
         const gapHalf = size * (dots === 2 ? 0.55 : 0.4);
         const color = mainColor(input);
         const paints: Paint[] = [];
+        // Zero at each end and every half wave; a crest or trough half-way between, at (i + ½) half waves.
         const f = (s: number) => amp * Math.sin((Math.PI * s) / half);
-        for (let i = 0; i < slots.count; i++) {
-            const from = i * half + (i === 0 ? 0 : gapHalf);
-            const to = (i + 1) * half - (i === slots.count - 1 ? 0 : gapHalf);
-            if (to > from) paints.push(line(displacedPath(w, from, to, size * 0.25, f), color));
-        }
-        for (let i = 1; i < slots.count; i++) {
-            const node = i * half;
-            const offsets = dots === 2 ? [-size * 0.22, size * 0.22] : [0];
+        const crests = Array.from({length: slots.count}, (_, i) => (i + 0.5) * half);
+        for (const [from, to] of runsBetween(w.length, crests, gapHalf)) paints.push(line(displacedPath(w, from, to, size * 0.25, f), color));
+        const offsets = dots === 2 ? [-size * 0.22, size * 0.22] : [0];
+        for (const crest of crests) {
             for (const o of offsets) {
-                paints.push(solidShape(circleRing(w.at(node + o).point, size * 0.16), color));
+                const {point, dir} = w.at(crest + o);
+                paints.push(solidShape(circleRing(offset(point, dir, 0, f(crest + o)), size * 0.16), color));
             }
         }
         return paints;
     };
 }
 
-/** Convergence line (Line6): a solid line crossed by slanted strokes. */
+/** The stretches of [0, length] left between breaks of `gapHalf` either side of each of `at`. */
+function runsBetween(length: number, at: readonly number[], gapHalf: number): [number, number][] {
+    const out: [number, number][] = [];
+    let from = 0;
+    for (const a of at) {
+        if (a - gapHalf > from) out.push([from, a - gapHalf]);
+        from = Math.max(from, a + gapHalf);
+    }
+    if (length > from) out.push([from, length]);
+    return out;
+}
+
+/**
+ * Convergence line (Line6): a solid line with short strokes standing off it, alternately on one
+ * side and the other, each leaning back toward the first point from where it touches the line, as
+ * Table M-II draws it. The first stroke stands right of the drawn direction.
+ */
 const convergenceLine: Painter = (input) => {
     const {walker: w, resolution: res} = input;
     const sizePx = pipSize();
-    const fit = decorationFit(w.length / res, sizePx * 3, sizePx);
+    const fit = decorationFit(w.length / res, sizePx * 3.6, sizePx);
     if (fit === 0) return plain(input);
     const size = sizePx * fit * res;
-    const slots = evenSlots(w.length, sizePx * 3 * fit * res);
+    const slots = evenSlots(w.length, sizePx * 1.8 * fit * res);
     const color = mainColor(input);
     const paints: Paint[] = [line(whole(w), color)];
+    const reach = size * 0.75;
     for (let i = 0; i < slots.count; i++) {
         const {point, dir} = w.at((i + 0.5) * slots.spacing);
-        paints.push(stroke([offset(point, dir, size * 0.35, -size * 0.35), offset(point, dir, -size * 0.7, size * 0.9)], color));
+        const side = i % 2 === 0 ? -1 : 1;
+        paints.push(stroke([point, offset(point, dir, -reach, side * reach)], color));
     }
     return paints;
 };
@@ -371,13 +426,15 @@ export const METOC_PAINTERS: Readonly<Partial<Record<N, Painter>>> = {
     [N.UpperWarmFront]: front({marks: [warm()], hollow: true}),
     [N.WarmFrontogenesis]: front({marks: [warm()], separator: 'dot'}),
     [N.WarmFrontolysis]: front({marks: [warm()], separator: 'cross'}),
-    [N.OccludedFront]: front({marks: [occludedSemicircle, occludedTriangle]}),
-    [N.UpperOccludedFront]: front({marks: [occludedSemicircle, occludedTriangle], hollow: true}),
-    [N.OccludedFrontolysis]: front({marks: [occludedSemicircle, occludedTriangle], separator: 'cross'}),
+    [N.OccludedFront]: front({marks: occluded}),
+    [N.UpperOccludedFront]: front({marks: occluded, hollow: true}),
+    // One crossing stroke a pair of pips, as drawn.
+    [N.OccludedFrontolysis]: front({marks: occluded, separator: 'cross', separatorEvery: 2}),
     [N.StationaryFront]: front({marks: stationary, colorLineByMark: true}),
     [N.UpperStationaryFront]: front({marks: stationary, colorLineByMark: true, hollow: true}),
-    [N.StationaryFrontogenesis]: front({marks: stationary, colorLineByMark: true, separator: 'dot'}),
-    [N.StationaryFrontolysis]: front({marks: stationary, colorLineByMark: true, separator: 'cross'}),
+    // A separator between every pip and at both ends, each coloured as its drawing colours it.
+    [N.StationaryFrontogenesis]: front({marks: stationary, colorLineByMark: true, separator: 'dot', separatorEnds: true, separatorColor: 'previous'}),
+    [N.StationaryFrontolysis]: front({marks: stationary, colorLineByMark: true, separator: 'cross', separatorEnds: true, separatorColor: 'next'}),
     [N.TroughAxis]: (input) => plain(input, [10, 7]),
     [N.Trough]: (input) => plain(input),
     [N.RidgeAxis]: ridgeAxis,

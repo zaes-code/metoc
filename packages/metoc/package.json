@@ -1,6 +1,6 @@
 {
   "name": "@zaes/metoc",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "ZAES",
   "contributors": [
     "Edwin Sanchez <edwin.sanchez@zaes.com>"
@@ -61,8 +61,8 @@
     "./package.json": "./package.json"
   },
   "dependencies": {
-    "@zaes/symbology-engine": "0.1.0",
-    "@zaes/symbology-editor": "0.1.0",
+    "@zaes/symbology-engine": "0.1.1",
+    "@zaes/symbology-editor": "0.1.1",
     "@types/geojson": "^7946.0.16"
   },
   "peerDependencies": {

@@ -17,7 +17,9 @@
  *   the end of the shaft. A missing direction draws the plot circle alone ("not displayed").
  * - Barbs and pennants "lie back from the shaft at an angle of 120 degrees", on the left of the
  *   shaft in the Northern Hemisphere and the right in the Southern — read from the anchor's own
- *   latitude, so a barb drawn south of the equator turns itself over.
+ *   latitude, so a barb drawn south of the equator turns itself over. Left is as the WMO and NWS
+ *   station model reads it, looking down the wind from the shaft's tip to the station: a north
+ *   wind's barbs stand east of its shaft and a west wind's north of it, toward the low pressure.
  */
 
 import {getMetocSpec, type MetocGraphicName} from '../core/catalog.js';
@@ -28,6 +30,8 @@ import type {Painter, PainterInput} from './paints.js';
 
 /** The letter size of a pressure centre, in CSS pixels. */
 export const CENTRE_LETTER_PX = 30;
+/** The size of the height written in a tropopause box, in CSS pixels. */
+const TROPOPAUSE_VALUE_PX = 15;
 /** The wind barb's shaft, in CSS pixels from the anchor to the tip. */
 export const BARB_SHAFT_PX = 40;
 const BARB_PX = 15;
@@ -65,7 +69,9 @@ function tropopause(kind: 'L' | 'H'): Painter {
         const o = anchorOf(input);
         const r = input.resolution;
         const color = colorOf(input.spec.colors[0]);
-        const w = 26 * r;
+        const value = input.props.value?.trim();
+        // Wide enough for the height written in it, never narrower than the drawing.
+        const w = Math.max(26, (value ? estimateTextWidth(value, TROPOPAUSE_VALUE_PX) : 0) / 2 + 5) * r;
         const h = 24 * r;
         const tip = 9 * r;
         const s = kind === 'L' ? -1 : 1;
@@ -78,9 +84,8 @@ function tropopause(kind: 'L' | 'H'): Painter {
             {role: 'decoration', geometry: {type: 'Polygon', coordinates: [ring]}, fill: {color: getMetocConfig().labelHalo}, stroke: {color, widthPx: lineWidth() + 1}},
         ];
         // Low: height on top, L below (the point is down). High: H on top, height below.
-        const value = input.props.value?.trim();
         out.push(text(at(o, 0, s * 9 * r), kind, color, 17, true));
-        if (value) out.push(text(at(o, 0, -s * 9 * r), value, color, 15));
+        if (value) out.push(text(at(o, 0, -s * 9 * r), value, color, TROPOPAUSE_VALUE_PX));
         return out;
     };
 }
@@ -125,8 +130,9 @@ function barb(input: PainterInput, circlePx: number, withCircle: boolean): Paint
     const theta = ((Math.round(dir / 10) * 10) % 360) * (Math.PI / 180);
     // Toward where the wind comes from, in projected space (x east, y north).
     const u: P = [Math.sin(theta), Math.cos(theta)];
-    // Left of the shaft (looking from the station to the tip) in the north, right in the south.
-    const side = o[1] >= 0 ? 1 : -1;
+    // Left of the shaft looking down the wind (from the tip to the station) in the north, right in
+    // the south. Looking from the tip, left is the clockwise side of the shaft's own direction.
+    const side = o[1] >= 0 ? -1 : 1;
     // "Lie back from the shaft at 120 degrees": 60 degrees off the shaft's own direction.
     const a = (side * Math.PI) / 3;
     const b: P = [u[0] * Math.cos(a) - u[1] * Math.sin(a), u[0] * Math.sin(a) + u[1] * Math.cos(a)];
@@ -187,9 +193,13 @@ export function stationPressureCode(hPa: number): string {
     return String(((Math.round(hPa * 10) % 1000) + 1000) % 1000).padStart(3, '0');
 }
 
-/** The station model's pressure change: tenths of a hectopascal, two digits, no sign (the symbol shows it: 1.9 → 19). */
+/**
+ * The station model's pressure change: tenths of a hectopascal with no sign, since the tendency
+ * symbol shows it. Two digits as Table M-II draws it (1.9 → 19, 0.4 → 04), three from 10 hPa, as
+ * the WMO code's three-digit group carries it (12.3 → 123); never more than 999.
+ */
 export function stationChangeCode(hPa: number): string {
-    return String(Math.min(99, Math.round(Math.abs(hPa) * 10))).padStart(2, '0');
+    return String(Math.min(999, Math.round(Math.abs(hPa) * 10))).padStart(2, '0');
 }
 
 /**

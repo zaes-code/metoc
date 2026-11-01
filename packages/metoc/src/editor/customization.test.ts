@@ -65,16 +65,28 @@ describe('turning a point symbol', () => {
         expect('rotation' in collection.get(id)!.properties.metoc).toBe(false);
     });
 
-    it('paints the symbol turned about its anchor, its letter turned with it and its label still upright', () => {
+    it('paints the symbol turned about its anchor, its letter and its boxed value turned with it', () => {
         const upright = paintMetocGraphic(metocFeature(N.TropopauseLow, [[0, 0]], {value: '350'}), {resolution: 1});
         const turned = paintMetocGraphic(metocFeature(N.TropopauseLow, [[0, 0]], {value: '350', rotation: 90}), {resolution: 1});
-        expect(turned.find((p) => p.text?.text === '350')!.text!.rotation).toBe(0);
+        // The height is written inside the box: part of the picture, so it turns with it.
+        expect(turned.find((p) => p.text?.text === '350')!.text!.rotation).toBeCloseTo(-Math.PI / 2);
         const box = (paints: typeof upright) => paints.find((p) => p.geometry.type === 'Polygon')!.geometry.coordinates as number[][][];
         // The box's first corner, (-26, 24) upright, is (24, 26) turned a quarter clockwise.
         const [x, y] = box(upright)[0][0];
         const [tx, ty] = box(turned)[0][0];
         expect([Math.round(tx), Math.round(ty)]).toEqual([Math.round(y), Math.round(-x)]);
         expect(turned.find((p) => p.text?.text === 'L')!.text!.rotation).toBeCloseTo(-Math.PI / 2);
+    });
+
+    it('turns a value written inside a glyph’s box or ellipse, and keeps a value beside the symbol upright', () => {
+        const rotationOf = (name: N, value: string) =>
+            paintMetocGraphic(metocFeature(name, [[0, 0]], {value, rotation: 90}), {resolution: 1}).find((p) => p.text?.text === value)!.text!.rotation;
+        for (const name of [N.FreezingLevel, N.TropopauseLevel, N.IceThicknessObserved, N.IceThicknessEstimated, N.TurbulenceMountainWaves]) {
+            expect(rotationOf(name, '350'), name).toBeCloseTo(-Math.PI / 2);
+        }
+        // The central pressure under an L, and a height under a turbulence mark, stand beside it.
+        expect(rotationOf(N.LowPressureCenter, '998')).toBe(0);
+        expect(rotationOf(N.TurbulenceModerate, '250')).toBe(0);
     });
 
     it('never turns a wind barb by rotation: its wind direction does', () => {

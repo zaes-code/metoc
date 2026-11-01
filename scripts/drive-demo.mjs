@@ -152,14 +152,15 @@ for (const engine of flat) {
         filled: [...document.querySelectorAll('#properties label.check')].some((l) => l.textContent.includes('Filled')),
         flip: [...document.querySelectorAll('#properties button')].some((b) => b.textContent === 'Flip side'),
     }));
-    check(offered.value && offered.dtg && !offered.dashed && !offered.filled && !offered.flip, `the panel offers what the registry says (${JSON.stringify(offered)})`);
-    await page.fill('#prop-value', '34 KT');
+    // Its rows document only the boxed date-time; the ring colour carries the wind radius.
+    check(!offered.value && offered.dtg && !offered.dashed && !offered.filled && !offered.flip, `the panel offers what the registry says (${JSON.stringify(offered)})`);
     await page.fill('#prop-dtg', '221800Z');
     const props = await page.evaluate(() => window.__metoc.collection.list()[0].properties.metoc);
-    check(props.value === '34 KT' && props.dtg === '221800Z', `typed fields are saved (${JSON.stringify(props)})`);
+    check(props.dtg === '221800Z', `typed fields are saved (${JSON.stringify(props)})`);
     await page.fill('#prop-dtg', '');
     const cleared = await page.evaluate(() => window.__metoc.collection.list()[0].properties.metoc);
     check(!('dtg' in cleared), 'an emptied field is removed, not saved empty');
+    await page.fill('#prop-dtg', '221800Z');
     await page.screenshot({path: path.join(outDir, `area-${engine}.png`)});
 
     // Undo and redo: one step per gesture.
@@ -185,10 +186,10 @@ for (const engine of flat) {
     // Now back at "deleted area restored": its typed value came back with it. One more step back
     // is before the value was typed.
     const props2 = await page.evaluate(() => ({n: window.__metoc.collection.size, metoc: window.__metoc.collection.list()[0]?.properties.metoc}));
-    check(props2.n === 1 && props2.metoc?.value === '34 KT', `undo brings back the area with its typed value (${JSON.stringify(props2)})`);
+    check(props2.n === 1 && props2.metoc?.dtg === '221800Z', `undo brings back the area with its typed value (${JSON.stringify(props2)})`);
     await page.click('#undo');
     const props3 = await page.evaluate(() => window.__metoc.collection.list()[0]?.properties.metoc);
-    check(props3 && !('value' in props3), `the toolbar Undo steps back to before the value was typed (${JSON.stringify(props3)})`);
+    check(props3 && !('dtg' in props3), `the toolbar Undo steps back to before the value was typed (${JSON.stringify(props3)})`);
 
     // Points: a one-click pressure centre, and a two-click wind barb.
     await page.click('#clear');
