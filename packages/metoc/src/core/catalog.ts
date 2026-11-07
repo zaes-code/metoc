@@ -13,12 +13,20 @@
  * Appendix M: "Standard Identity is not applicable to METOC symbols", so nothing here carries a
  * hostility. Colours are fixed by the standard, except where it says "Operator Defined" or offers a
  * choice ("Red or Black"), which is what {@link MetocGraphicSpec.operatorColor} marks.
+ *
+ * After Appendix M come the maritime weather and ice products of IHO S-100 that the WMO maintains:
+ * S-412 Marine Weather Warnings and S-411 Ice Information. Their entries carry a
+ * {@link MetocGraphicSpec.source}, no entity code (2525E has none for them, so they have no SIDC),
+ * their product's portrayal colours, and the S-100 feature and attribute values each stands for,
+ * which `readS100Dataset` reads data into.
  */
 
 import {CORE_SPECS} from '../catalog/core.js';
 import {SET45_POINT_SPECS} from '../catalog/set45Points.js';
 import {SET46_POINT_SPECS} from '../catalog/set46Points.js';
 import {SET46_LINE_AREA_SPECS} from '../catalog/set46LinesAreas.js';
+import {S411_SPECS} from '../catalog/s411.js';
+import {S412_SPECS} from '../catalog/s412.js';
 import type {MetocSpecDef} from './specTypes.js';
 
 export {MetocCategory, metocSpec} from './specTypes.js';
@@ -33,10 +41,12 @@ export type {
     MetocColorRole,
     MetocDrawRule,
     MetocGeometryKind,
+    MetocS100Binding,
+    MetocSource,
     MetocValueField,
 } from './specTypes.js';
 
-const ALL_SPECS = [...CORE_SPECS, ...SET45_POINT_SPECS, ...SET46_POINT_SPECS, ...SET46_LINE_AREA_SPECS] as const;
+const ALL_SPECS = [...CORE_SPECS, ...SET45_POINT_SPECS, ...SET46_POINT_SPECS, ...SET46_LINE_AREA_SPECS, ...S412_SPECS, ...S411_SPECS] as const;
 
 /** The name of every METOC graphic this library draws. */
 export type MetocGraphicName = (typeof ALL_SPECS)[number]['name'];

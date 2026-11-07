@@ -13,8 +13,8 @@ describe('the public API', () => {
             'drawnPoints', 'flipMetocFeature', 'fromMercator', 'getDefaultLineColor', 'getMetocConfig', 'getMetocDisplayName', 'getMetocSpec',
             'isMetocGraphicName', 'isPointSize', 'listMetocGraphics', 'metocFeature', 'metocGraphicByEntityCode',
             'metocGraphicFromSidc', 'metocSidc', 'metocThumbnailSvg', 'minimumPoints', 'nearestWorldX', 'paintMetocGraphic',
-            'paintMetocGraphicAsGeoJSON', 'pointClicks', 'renderMetocGraphic', 'resetMetocConfig', 'toMercator', 'validateMetocFeature',
-            'withDrawnPoints', 'wrapLongitude',
+            'paintMetocGraphicAsGeoJSON', 'pointClicks', 'readS100Dataset', 'readS100ExchangeCatalogue', 'readS100StandaloneSignature', 'renderMetocGraphic', 'resetMetocConfig', 'toMercator', 'validateMetocFeature',
+            'verifyS100ExchangeSet', 'verifyS100Signature', 'withDrawnPoints', 'wrapLongitude',
         ]);
     });
 

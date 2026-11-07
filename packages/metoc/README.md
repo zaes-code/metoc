@@ -1,7 +1,8 @@
 # @zaes/metoc
 
 The weather and oceanographic graphics of MIL-STD-2525E Change 1, Appendix M (symbol sets 45 and
-46) as GeoJSON, with OpenLayers and MapLibre renderers and an editor.
+46), and the S-412 marine weather warnings and S-411 ice charts of IHO S-100, as GeoJSON, with
+OpenLayers and MapLibre renderers and an editor.
 
 **[Live sample](https://zaes-code.github.io/metoc/)** · **[Product page](https://zaes.com/metoc.html)** · [Catalog of every graphic](https://zaes.com/metoc-catalog.html)
 

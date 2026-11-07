@@ -46,7 +46,18 @@ export enum MetocCategory {
     MineWarfareBottom = 'Mine warfare bottom descriptors',
     MaritimeLimits = 'Maritime limits',
     ManMade = 'Man-made structures',
+    /** S-412 Marine Weather Warnings: the warning areas, coloured by threshold. */
+    MarineWarnings = 'Marine weather warnings (S-412)',
+    /** S-411 Ice Information: ice-chart areas in the WMO colour codes, and the ice chart's lines. */
+    IceCharts = 'Ice charts (S-411)',
 }
+
+/**
+ * The standard a graphic comes from, where it is not MIL-STD-2525E: the IHO S-100 product
+ * specifications the WMO maintains for maritime weather and ice. Such a graphic has no entity code
+ * and no SIDC, and its colours are the product's portrayal catalogue's, not Appendix M's.
+ */
+export type MetocSource = 'S-411' | 'S-412';
 
 /**
  * A colour role. The palette maps roles to colours, so a host retunes "the cold-front blue" once
@@ -173,12 +184,31 @@ export interface MetocSpecDef<N extends string = string> {
     readonly areaStyle?: AreaStyleDef;
     /** What the standard says about it, in a sentence, where its name alone does not. */
     readonly note?: string;
+    /**
+     * The product specification it comes from, when not MIL-STD-2525E (absent): an S-411 ice-chart
+     * or S-412 warning graphic. Its `symbolSet` is then only where it would sit (45 for weather, 46
+     * for ice) and its `entityCode` is `null`.
+     */
+    readonly source?: MetocSource;
+    /**
+     * The S-100 feature type it portrays and the attribute values it stands for, as the product's
+     * feature catalogue names them: `{feature: 'WindWarning', attribute: 'windWarningThreshold',
+     * codes: [3]}`. A reader of S-100 data picks the graphic by them.
+     */
+    readonly s100?: MetocS100Binding;
+}
+
+/** Which S-100 feature, and which values of one of its attributes, a graphic portrays. */
+export interface MetocS100Binding {
+    readonly feature: string;
+    readonly attribute?: string;
+    readonly codes?: readonly number[];
 }
 
 type Extra = Partial<
     Pick<
         MetocSpecDef,
-        'operatorColor' | 'valueField' | 'operatorDash' | 'dateTimeLabel' | 'geometry' | 'directional' | 'oriented' | 'glyph' | 'lineStyle' | 'areaStyle' | 'note'
+        'operatorColor' | 'valueField' | 'operatorDash' | 'dateTimeLabel' | 'geometry' | 'directional' | 'oriented' | 'glyph' | 'lineStyle' | 'areaStyle' | 'note' | 'source' | 's100'
     >
 >;
 

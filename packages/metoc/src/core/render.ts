@@ -31,10 +31,10 @@ const MIN_POINT_LABEL_PX = 5;
  * `closed`, the points are an area's ring (without its closing point) and the result is closed.
  * The curve passes through every drawn point (Catmull-Rom): Appendix M's "connected with a curved
  * line" is a curve through the anchors. Corner cutting (Chaikin) would leave a front well off
- * the points the operator clicked.
+ * the points the operator clicked. `smooth` is the config's unless a graphic says otherwise
+ * ({@link smoothsFor}).
  */
-export function paintedPath(projected: readonly ProjectedPosition[], closed = false): ProjectedPosition[] {
-    const smooth = getMetocConfig().smoothLines;
+export function paintedPath(projected: readonly ProjectedPosition[], closed = false, smooth = getMetocConfig().smoothLines): ProjectedPosition[] {
     if (closed) {
         if (smooth) return catmullRomClosed(projected, CURVE_SAMPLES);
         const ring = projected.map((p) => [p[0], p[1]] as ProjectedPosition);
@@ -43,11 +43,20 @@ export function paintedPath(projected: readonly ProjectedPosition[], closed = fa
     return smooth ? catmullRom(projected, CURVE_SAMPLES) : projected.map((p) => [p[0], p[1]] as ProjectedPosition);
 }
 
+/**
+ * Whether a graphic's line or area is drawn as a curve: as the config says, except an S-411 or
+ * S-412 graphic, whose S-100 geometry is exact (a warning's corners, an ice edge's vertices) and is
+ * drawn straight between its points.
+ */
+export function smoothsFor(spec: {source?: string}): boolean {
+    return !spec.source && getMetocConfig().smoothLines;
+}
+
 /** A graphic's painted outline in projected meters: its line, or its area's closed ring. */
 export function paintedOutline(feature: MetocFeature): ProjectedPosition[] {
     const spec = getMetocSpec(feature.properties.metoc.name);
     if (spec.geometry === 'point') return drawnPoints(feature).slice(0, 1).map(toMercator);
-    return paintedPath(drawnPoints(feature).map(toMercator), spec.geometry === 'area');
+    return paintedPath(drawnPoints(feature).map(toMercator), spec.geometry === 'area', smoothsFor(spec));
 }
 
 /**
@@ -60,7 +69,7 @@ export function paintMetocPath(props: MetocProperties, projected: readonly Proje
     const spec = getMetocSpec(props.name);
     if (projected.length < minimumPoints(spec)) return [];
     // A point has no path: its painter reads the anchor, walker.path[0], and draws around it.
-    const w = spec.geometry === 'point' ? walker(projected.slice(0, 1)) : walker(paintedPath(projected, spec.geometry === 'area'));
+    const w = spec.geometry === 'point' ? walker(projected.slice(0, 1)) : walker(paintedPath(projected, spec.geometry === 'area', smoothsFor(spec)));
     if (w.length === 0 && spec.geometry !== 'point') return [];
     const painter = painterFor(spec);
     if (!painter) return [];

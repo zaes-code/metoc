@@ -43,6 +43,14 @@ function cleanProps(raw: MetocProperties): MetocProperties {
         const n = numberOf(raw[k]);
         if (n !== undefined) out[k] = n;
     }
+    // S-100 attributes: a flat record of strings and finite numbers, nothing else.
+    if (raw.s100 && typeof raw.s100 === 'object') {
+        const s100: Record<string, string | number> = {};
+        for (const [k, v] of Object.entries(raw.s100)) {
+            if (k !== '' && ((typeof v === 'string' && v !== '') || (typeof v === 'number' && isFinite(v)))) s100[k] = v;
+        }
+        if (Object.keys(s100).length) out.s100 = s100;
+    }
     return out;
 }
 

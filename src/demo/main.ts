@@ -22,6 +22,7 @@ import {
     listMetocGraphics,
     metocSidc,
     metocThumbnailSvg,
+    readS100Dataset,
     type MetocFeature,
     type MetocGraphicName,
     type PointSize,
@@ -188,18 +189,19 @@ function renderPicker(filter = ''): void {
     const list = $('#picker-list');
     list.replaceChildren();
     const q = filter.trim().toLowerCase();
-    let lastSet = 0;
+    let lastSet = '';
     for (const category of CATEGORY_ORDER) {
         const names = listMetocGraphics().filter((n) => {
             const s = getMetocSpec(n);
             return s.category === category && (!q || s.displayName.toLowerCase().includes(q) || (s.entityCode ?? '').includes(q));
         });
         if (names.length === 0) continue;
-        const set = getMetocSpec(names[0]).symbolSet;
+        const first = getMetocSpec(names[0]);
+        const set = first.source ? 'S-100' : String(first.symbolSet);
         if (set !== lastSet) {
             const h = document.createElement('h2');
             h.className = 'set-heading';
-            h.textContent = set === 45 ? 'Atmospheric · symbol set 45' : 'Oceanographic · symbol set 46';
+            h.textContent = set === 'S-100' ? 'Maritime weather and ice · IHO S-100' : set === '45' ? 'Atmospheric · symbol set 45' : 'Oceanographic · symbol set 46';
             list.append(h);
             lastSet = set;
         }
@@ -237,7 +239,7 @@ function tile(name: MetocGraphicName): HTMLButtonElement {
     const a = document.createElement('span');
     a.textContent = s.displayName;
     const c = document.createElement('span');
-    c.textContent = s.entityCode ? `45 · ${s.entityCode}` : 'Table M-I draw rule · no SIDC';
+    c.textContent = s.source ? `${s.source} · ${s.s100?.feature ?? ''}` : s.entityCode ? `${s.symbolSet} · ${s.entityCode}` : 'Table M-I draw rule · no SIDC';
     label.append(a, c);
     b.append(thumb, label);
     b.addEventListener('click', () => {
@@ -318,13 +320,18 @@ function renderProperties(force = false): void {
     h.textContent = s.displayName;
     const facts = document.createElement('dl');
     facts.className = 'facts';
-    for (const [k, v] of [
-        ['Symbol set', s.symbolSet === 46 ? '46 Oceanographic' : '45 Atmospheric'],
-        ['Entity code', s.entityCode ?? `none in Table ${s.symbolSet === 46 ? 'A-LII' : 'A-LI'}`],
-        ['SIDC', metocSidc(p.name) ?? 'none'],
-        ['Draw rule', s.drawRule],
-        ['Points', String(drawnPoints(f).length)],
-    ]) {
+    // An S-411 or S-412 graphic: its product and S-100 feature, then every attribute the data gave it.
+    const binding = s.s100 && (s.s100.attribute ? `${s.s100.feature}, ${s.s100.attribute} ${s.s100.codes?.join(', ')}` : s.s100.feature);
+    const standardFacts: string[][] = s.source
+        ? [['Standard', `${s.source} (IHO S-100)`], ['S-100 feature', binding ?? ''], ['SIDC', 'none']]
+        : [
+              ['Symbol set', s.symbolSet === 46 ? '46 Oceanographic' : '45 Atmospheric'],
+              ['Entity code', s.entityCode ?? `none in Table ${s.symbolSet === 46 ? 'A-LII' : 'A-LI'}`],
+              ['SIDC', metocSidc(p.name) ?? 'none'],
+              ['Draw rule', s.drawRule],
+          ];
+    const attributes = Object.entries(p.s100 ?? {}).map(([k, v]) => [k, String(v)]);
+    for (const [k, v] of [...standardFacts, ['Points', String(drawnPoints(f).length)], ...attributes]) {
         const dt = document.createElement('dt');
         dt.textContent = k;
         const dd = document.createElement('dd');
@@ -765,7 +772,18 @@ $<HTMLInputElement>('#import-file').addEventListener('change', async (e) => {
     input.value = '';
     if (!file) return;
     try {
-        const {loaded, skipped} = collection.load(JSON.parse(await file.text()));
+        const text = await file.text();
+        // S-411 ice charts and S-412 warnings come as S-100 GML; everything else as GeoJSON.
+        if (/\.(gml|xml)$/i.test(file.name) || text.trimStart().startsWith('<')) {
+            const read = readS100Dataset(text);
+            const {loaded} = collection.load({type: 'FeatureCollection', features: read.features});
+            history.checkpoint();
+            const notes = [...read.skipped.map((s) => `${s.id ?? s.feature} ${s.reason}`), ...read.warnings];
+            const note = notes.length ? ` ${notes.length} note${notes.length === 1 ? '' : 's'}: ${notes.join('; ')}` : '';
+            $('#status').textContent = `Imported ${loaded.length} graphic${loaded.length === 1 ? '' : 's'} from ${[read.product ?? 'S-100', read.edition].filter(Boolean).join(' ')}.${note}`;
+            return;
+        }
+        const {loaded, skipped} = collection.load(JSON.parse(text));
         history.checkpoint();
         const note = skipped.length ? `, skipped ${skipped.length}: ${skipped.map((s) => `#${s.index} ${s.reason}`).join('; ')}` : '';
         $('#status').textContent = `Imported ${loaded.length} graphic${loaded.length === 1 ? '' : 's'}${note}.`;

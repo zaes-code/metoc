@@ -1,6 +1,6 @@
 {
   "name": "@zaes/metoc",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "author": "ZAES",
   "contributors": [
     "Edwin Sanchez <edwin.sanchez@zaes.com>"
@@ -17,7 +17,7 @@
   "engines": {
     "node": ">=18"
   },
-  "description": "MIL-STD-2525E Appendix M weather and oceanographic graphics (symbol sets 45 and 46) as GeoJSON, with OpenLayers and MapLibre renderers and an editor.",
+  "description": "MIL-STD-2525E Appendix M weather and oceanographic graphics (symbol sets 45 and 46) and IHO S-100 marine weather warnings (S-412) and ice charts (S-411) as GeoJSON, with OpenLayers and MapLibre renderers and an editor.",
   "keywords": [
     "metoc",
     "weather",
@@ -25,7 +25,11 @@
     "symbology",
     "geojson",
     "openlayers",
-    "maplibre"
+    "maplibre",
+    "s-100",
+    "s-411",
+    "s-412",
+    "sea-ice"
   ],
   "repository": {
     "type": "git",

@@ -1,4 +1,4 @@
-import {METOC_GRAPHICS, MetocGraphicName, getMetocDisplayName, isMetocGraphicName, listMetocGraphics, metocGraphicByEntityCode} from './catalog';
+import {METOC_GRAPHICS, MetocCategory, MetocGraphicName, getMetocDisplayName, isMetocGraphicName, listMetocGraphics, metocGraphicByEntityCode} from './catalog';
 import {metocGraphicFromSidc, metocSidc} from './sidc';
 import {painterFor} from '../symbology/paints';
 
@@ -36,7 +36,20 @@ describe('the catalog', () => {
         const keys = coded.map((n) => `${METOC_GRAPHICS[n].symbolSet}:${METOC_GRAPHICS[n].entityCode}`);
         expect(new Set(keys).size).toBe(keys.length);
         // Table M-I's barb rule has no Table A-LI entity; the station plot is a composite of Appendix M symbols.
-        expect(listMetocGraphics().filter((n) => METOC_GRAPHICS[n].entityCode === null)).toEqual([MetocGraphicName.WindBarb, MetocGraphicName.StationPlot]);
+        const appendixM = listMetocGraphics().filter((n) => !METOC_GRAPHICS[n].source);
+        expect(appendixM.filter((n) => METOC_GRAPHICS[n].entityCode === null)).toEqual([MetocGraphicName.WindBarb, MetocGraphicName.StationPlot]);
+    });
+
+    it('gives the S-411 and S-412 graphics no entity code, an S-100 feature, and a category of their own', () => {
+        const s41x = listMetocGraphics().filter((n) => METOC_GRAPHICS[n].source);
+        expect(s41x.length).toBeGreaterThan(0);
+        for (const n of s41x) {
+            const spec = METOC_GRAPHICS[n];
+            expect(spec.entityCode, n).toBeNull();
+            expect(spec.s100?.feature, n).toBeTruthy();
+            expect(spec.category, n).toBe(spec.source === 'S-412' ? MetocCategory.MarineWarnings : MetocCategory.IceCharts);
+            expect(n.startsWith(spec.source!.replace('-', '')), n).toBe(true);
+        }
     });
 
     it('draws each graphic as its rule says: Area and Line5 as areas, Point as points, other Lines as lines', () => {

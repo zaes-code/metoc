@@ -9,3 +9,9 @@ public/maplibre-gl-shared.mjs
 .idea/
 release/
 demo-addons.local.json
+# The docs site: the API reference, the graphics page and its thumbnails are generated, and so is the build.
+/site/api/
+/site/guide/graphics.md
+/site/public/graphics/
+/site/.vitepress/cache/
+/site/.vitepress/dist/

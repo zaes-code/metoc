@@ -2,7 +2,8 @@
  * # @zaes/metoc
  *
  * Every MIL-STD-2525E Change 1, Appendix M graphic (symbol sets 45 and 46) as plain GeoJSON: the
- * catalog, the paint layer, the collection and validation. It is one symbol family on
+ * catalog, the paint layer, the collection and validation. With them, the S-412 Marine Weather
+ * Warnings and S-411 Ice Information graphics, which {@link readS100Dataset} reads S-100 data into. It is one symbol family on
  * `@zaes/symbology-engine`, which owns the marks, the glyph format, the store, the map-host seam
  * and the renderers; this package owns every METOC fact, and re-exports what an editor or another
  * renderer needs from the engine, so they import `@zaes/metoc` alone. This root entry is map-agnostic: it
@@ -28,7 +29,7 @@ export {
     minimumPoints,
     pointClicks,
 } from './core/catalog.js';
-export type {MetocColorRole, MetocDrawRule, MetocGeometryKind, MetocGraphicSpec, MetocValueField} from './core/catalog.js';
+export type {MetocColorRole, MetocDrawRule, MetocGeometryKind, MetocGraphicSpec, MetocS100Binding, MetocSource, MetocValueField} from './core/catalog.js';
 export {SIDC_VERSION_2525E_CHANGE_1, metocGraphicFromSidc, metocSidc} from './core/sidc.js';
 
 // Configuration.
@@ -43,6 +44,23 @@ export type {MetocFeature, MetocProperties} from './core/types.js';
 export {METOC_SCHEMA, MetocCollection} from './core/collection.js';
 export type {CollectionChange, CollectionListener, SkippedFeature} from './core/collection.js';
 export {validateMetocFeature} from './core/validation.js';
+
+// Maritime weather and ice data: S-412 warnings and S-411 ice charts (IHO S-100 GML) as graphics.
+export {readS100Dataset} from './core/s100.js';
+export type {S100Product, S100ReadOptions, S100ReadResult, S100Skipped} from './core/s100.js';
+// Their exchange sets (S-100 Part 17) and signatures (Part 15), verified with Web Crypto.
+export {readS100ExchangeCatalogue, readS100StandaloneSignature, verifyS100ExchangeSet, verifyS100Signature} from './core/exchangeSet.js';
+export type {
+    S100CertificateEntry,
+    S100DatasetEntry,
+    S100ExchangeCatalogue,
+    S100ExchangeSetVerification,
+    S100Signature,
+    S100SignatureOutcome,
+    S100SignatureResult,
+    S100StandaloneSignature,
+    S100VerifyOptions,
+} from './core/exchangeSet.js';
 
 // Drawing without a map: GeoJSON, marks and thumbnails.
 export {METOC_PAINTER, paintMetocGraphic, paintMetocGraphicAsGeoJSON, renderMetocGraphic} from './core/render.js';

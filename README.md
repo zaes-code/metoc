@@ -43,6 +43,15 @@ Symbol set 46 (Oceanographic), Table A-LII:
 | Mine warfare | bottom sediments, roughness, clutter, impact burial, bottom categories and types, in the standard's exact colours |
 | Limits and structures | maritime boundaries and areas, restricted, swept and training areas, submarine cables, submerged cribs, canals, fords, locks, oil and gas rigs and fields, pipelines, piles |
 
+Maritime weather and ice, IHO S-100 (no SIDC; drawn as their product's portrayal):
+
+| Group | Graphics |
+|---|---|
+| Marine weather warnings (S-412) | wind (near gale, gale, storm, hurricane force), significant wave height (2.5 m to over 14 m), ice accretion (moderate, severe), restricted visibility, thunderstorm |
+| Ice charts (S-411) | sea-ice areas in the WMO colour codes, by total concentration or by stage of development, with the WMO egg code; iceberg area; ice edge, limit of open water, limit of all known ice, iceberg limit; ridge, lead, fracture and crack lines; ice keel, grounded hummock, strips and patches, stage of melt, ice lead and fracture symbols |
+
+`readS100Dataset(gml)` reads an S-412 or S-411 dataset (S-100 GML) into graphics, keeping every attribute in `properties.metoc.s100`; S-411 ice symbols become the Appendix M symbols for them, ice areas carry the WMO egg code, and anything it cannot draw is listed with the reason. `readS100ExchangeCatalogue` lists an exchange set's datasets, and `verifyS100ExchangeSet` checks its S-100 Part 15 signatures against the Scheme Administrator certificates you trust, with Web Crypto.
+
 Most of the point symbols, lines and areas are data — an icon as SVG path data, or a line or area style — drawn by one generic painter each, screen-sized like everything else.
 
 ## Quick start
@@ -95,7 +104,7 @@ A properties dialog asks `getMetocFields(name)` which inputs to offer: the value
 ## What it does
 
 - **Screen-sized decoration.** Pips, dots, chevrons and rungs are the same size on screen at every zoom; they are computed per frame from the paint layer, never baked into the geometry in meters.
-- **Curved lines.** Drawn points are joined by a curve through every one of them (centripetal Catmull-Rom), as Appendix M draws fronts; the drawn points stay the edit handles, on the line. `configureMetoc({smoothLines: false})` turns it off.
+- **Curved lines.** Drawn points are joined by a curve through every one of them (centripetal Catmull-Rom), as Appendix M draws fronts; the drawn points stay the edit handles, on the line. `configureMetoc({smoothLines: false})` turns it off. S-411 and S-412 geometry is exact and always drawn straight.
 - **The standard's colours,** with an operator colour only where Table M-II leaves it open (jet stream red or black, stream line, freeform).
 - **One editor for every engine.** Draw, move, reshape, insert and delete points, nudge with the arrow keys, duplicate with Ctrl+D; the gesture rules live once in `MetocInteraction`, which edits through the map-host seam.
 - **Undo and redo.** `MetocHistory` snapshots the collection at the end of each gesture (the editor's `commit` event), so a drag is one step.

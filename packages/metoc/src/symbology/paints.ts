@@ -21,6 +21,7 @@ import type {MetocProperties} from '../core/types.js';
 import {AREA_PAINTERS} from './areaPaints.js';
 import {POINT_PAINTERS} from './pointPaints.js';
 import {areaStylePainter, glyphPainter, lineStylePainter} from './stylePaints.js';
+import {iceAreaPainter} from './eggCode.js';
 
 /** What a painter is handed. */
 export interface PainterInput {
@@ -475,5 +476,6 @@ export const METOC_PAINTERS: Readonly<Partial<Record<N, Painter>>> = {
 
 /** The painter for a graphic: its own, or the generic one for its glyph, line style or area style. */
 export function painterFor(spec: MetocGraphicSpec): Painter | undefined {
+    if (spec.source === 'S-411' && spec.s100?.feature === 'SeaIce') return iceAreaPainter;
     return METOC_PAINTERS[spec.name] ?? (spec.glyph ? glyphPainter : spec.lineStyle ? lineStylePainter : spec.areaStyle ? areaStylePainter : undefined);
 }

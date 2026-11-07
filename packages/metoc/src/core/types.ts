@@ -82,6 +82,14 @@ export interface MetocProperties {
      * it. Lines and areas ignore it.
      */
     rotation?: number;
+    /**
+     * The S-100 attributes of a graphic read from S-411 or S-412 data, by the product's attribute
+     * codes (`windWarningThreshold`, `issueDate`, `totalConcentration`), so nothing the data says
+     * is lost: a complex attribute's parts are joined with a dot (`fixedDateRange.dateStart`), and
+     * an attribute given more than once is its values joined with a comma. Nothing draws from it;
+     * a host shows it as the feature's report.
+     */
+    s100?: Record<string, string | number>;
 }
 
 /** One METOC graphic, as saved and exchanged. Coordinates are EPSG:4326 `[lon, lat]`. */
