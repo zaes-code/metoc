@@ -13,7 +13,8 @@
  * - The shaft points the way the wind blows **from**, to the nearest 10 degrees, from a plot circle
  *   at the anchor.
  * - Speed is built from the tip back: pennants (50 kt), barbs (10 kt), a half barb (5 kt). Speeds
- *   of 5 kt or more round to the nearest 5; 1–2 kt is the shaft alone. A missing speed is an X at
+ *   of 5 kt or more round to the nearest 5; 1–2 kt is the shaft alone, and 3–4 kt, which the rule
+ *   leaves open, a half barb, as the WMO station model draws it. A missing speed is an X at
  *   the end of the shaft. A missing direction draws the plot circle alone ("not displayed").
  * - Barbs and pennants "lie back from the shaft at an angle of 120 degrees", on the left of the
  *   shaft in the Northern Hemisphere and the right in the Southern — read from the anchor's own
@@ -105,7 +106,9 @@ const calmWinds: Painter = (input) => {
  */
 export function barbCounts(speed: number | undefined): {pennants: number; barbs: number; halves: number} | null {
     if (speed === undefined || !isFinite(speed)) return null;
-    if (speed < 5) return {pennants: 0, barbs: 0, halves: 0};
+    // Under 2.5 kt is the shaft alone (Table M-I's 1-2 kt); 3-4 kt rounds to a half barb, as the WMO
+    // station model draws 3-7 kt. Table M-I gives no rule for 3-4 kt.
+    if (speed < 2.5) return {pennants: 0, barbs: 0, halves: 0};
     let rest = Math.round(speed / 5) * 5;
     const pennants = Math.floor(rest / 50);
     rest -= pennants * 50;

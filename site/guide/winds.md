@@ -10,13 +10,18 @@ metocFeature(MetocGraphicName.WindBarb, [[-97.5, 35.4]], {windDirection: 270, wi
 ```
 
 - The direction is drawn to the nearest 10°, and the speed with Table M-I's half barbs (5 kt),
-  barbs (10 kt) and pennants (50 kt).
+  barbs (10 kt) and pennants (50 kt), rounded to the nearest 5 kt. 1–2 kt is the shaft alone;
+  3–4 kt, which Table M-I leaves open, is a half barb, as the WMO station model draws it.
 - **No speed** draws an X at the end of the shaft. **No direction** draws the plot circle only, as
   Table M-I says such a wind "is not displayed"; `validateMetocFeature` reports it.
 - Barbs go on the left of the shaft north of the equator and on the right south of it, read from
   the station's own latitude, as the WMO and NWS station model draws them.
 - The wind barb has **no SIDC**: 2525E keeps its draw rule in Table M-I but lists no entity for it,
   so `metocSidc` returns `undefined` rather than a code another system could not read back.
+  MIL-STD-2525D did list it, as Wind Plot 45/140200, so `metocGraphicFromSidc` reads a 2525D code
+  (version 10 or 11) with that entity as the wind barb, and a 30-digit base 2525E code (version 13)
+  too: SCP 23-045-DS, which removed it, is incorporated by 2525E Change 1 (version 15), and the base
+  2525E predates it (not confirmed against the base 2525E's text).
 
 ## The station plot
 

@@ -145,11 +145,21 @@ function front(opts: FrontOptions): Painter {
 
         // The line: one run per gap-free stretch, coloured per mark when the front asks for it.
         if (opts.colorLineByMark) {
+            // The gaps by start, scanned once along the line: a gap that reaches past `from` starts
+            // after `from - widest`, so each stretch looks only at the gaps near it.
+            const byStart = [...gaps].sort((x, y) => x[0] - y[0]);
+            const widest = byStart.reduce((m, [a, b]) => Math.max(m, b - a), 0);
+            let first = 0;
             for (let i = 0; i < slots.count; i++) {
                 const from = i * slots.spacing;
                 const to = from + slots.spacing;
                 const color = roleColor(input, opts.marks[i % n].role);
-                const localGaps = gaps.filter(([a, b]) => b > from && a < to).map(([a, b]) => [Math.max(a, from), Math.min(b, to)] as [number, number]);
+                while (first < byStart.length && byStart[first][0] < from - 2 * widest) first++;
+                const localGaps: [number, number][] = [];
+                for (let k = first; k < byStart.length && byStart[k][0] < to; k++) {
+                    const [a, b] = byStart[k];
+                    if (b > from) localGaps.push([Math.max(a, from), Math.min(b, to)]);
+                }
                 const sub = runsOutside(w, [[0, from], ...localGaps, [to, w.length]]);
                 for (const run of sub) paints.push(line(run, color));
             }

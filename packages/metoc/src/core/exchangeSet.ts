@@ -430,22 +430,24 @@ export async function verifyS100Signature(data: Uint8Array, signature: S100Signa
         const roots = options.trustedRoots.map((r) => parseCertificate(certificateDer(r)));
         const pool = options.certificates.map((c) => ({entry: c, cert: parseCertificate(c.der)}));
 
-        // The certificate that made the signature: one the set carries, or the Scheme Administrator's own.
-        let signer: X509 | undefined = pool.find((p) => p.entry.id === signature.certificateRef)?.cert;
-        if (!signer && signature.certificateRef && signature.certificateRef === options.schemeAdministratorId) signer = roots[0];
-        if (!signer) return {outcome: 'certificate-not-found', detail: `no certificate '${signature.certificateRef}'`};
+        // The certificate that made the signature: one the set carries, or the Scheme Administrator's
+        // own, which may be any of the trusted roots.
+        const carried = pool.find((p) => p.entry.id === signature.certificateRef)?.cert;
+        const candidates = carried ? [carried] : signature.certificateRef && signature.certificateRef === options.schemeAdministratorId ? roots : [];
+        if (!candidates.length) return {outcome: 'certificate-not-found', detail: `no certificate '${signature.certificateRef}'`};
 
         // The signature: ECDSA over the file's exact bytes.
-        const curve = signer.keyOid === EC_KEY && signer.curveOid ? CURVES[signer.curveOid] : undefined;
-        if (!curve) return {outcome: 'unsupported', detail: 'the signing certificate has no supported EC key'};
-        if (part15 && curve.name !== 'P-384') return {outcome: 'invalid', detail: 'Part 15 signatures are made with a P-384 key'};
-        const subtle = subtleCrypto();
-        const key = await subtle.importKey('spki', signer.spki as BufferSource, {name: 'ECDSA', namedCurve: curve.name}, false, ['verify']);
-        // Part 15 encodes the signature in DER; the earlier ECDSA catalogues give r‖s.
-        const raw = part15 || signature.kind !== 'legacy' ? derToRaw(signature.value, curve.size) : signature.value;
-        if (raw.length !== curve.size * 2) return {outcome: 'invalid', detail: 'the signature is the wrong length for its key'};
-        const ok = await subtle.verify({name: 'ECDSA', hash: part15 ? 'SHA-384' : 'SHA-256'}, key, raw as BufferSource, data as BufferSource);
-        if (!ok) return {outcome: 'invalid', detail: 'the signature does not match the file'};
+        let signer: X509 | undefined;
+        let failure: S100SignatureResult | undefined;
+        for (const candidate of candidates) {
+            const why = await signatureFailure(data, signature, candidate, part15);
+            if (!why) {
+                signer = candidate;
+                break;
+            }
+            if (!failure) failure = why;
+        }
+        if (!signer) return failure!;
 
         // The chain, as Part 15 builds it: the Scheme Administrator issues each data server's
         // certificate. So the signer is a trusted root, or was signed by one; no intermediate is
@@ -461,6 +463,28 @@ export async function verifyS100Signature(data: Uint8Array, signature: S100Signa
     } catch (err) {
         return {outcome: 'error', detail: (err as Error).message};
     }
+}
+
+/** Why `signature` is not `cert`'s over `data`, or `undefined` when it is. */
+async function signatureFailure(data: Uint8Array, signature: S100Signature, cert: X509, part15: boolean): Promise<S100SignatureResult | undefined> {
+    const curve = cert.keyOid === EC_KEY && cert.curveOid ? CURVES[cert.curveOid] : undefined;
+    if (!curve) return {outcome: 'unsupported', detail: 'the signing certificate has no supported EC key'};
+    if (part15 && curve.name !== 'P-384') return {outcome: 'invalid', detail: 'Part 15 signatures are made with a P-384 key'};
+    const subtle = subtleCrypto();
+    const key = await subtle.importKey('spki', cert.spki as BufferSource, {name: 'ECDSA', namedCurve: curve.name}, false, ['verify']);
+    // Part 15 encodes the signature in DER; the earlier ECDSA catalogues give r‖s.
+    const raw = part15 || signature.kind !== 'legacy' ? derToRaw(signature.value, curve.size) : signature.value;
+    if (raw.length !== curve.size * 2) return {outcome: 'invalid', detail: 'the signature is the wrong length for its key'};
+    const ok = await subtle.verify({name: 'ECDSA', hash: part15 ? 'SHA-384' : 'SHA-256'}, key, raw as BufferSource, data as BufferSource);
+    return ok ? undefined : {outcome: 'invalid', detail: 'the signature does not match the file'};
+}
+
+/**
+ * Whether a catalogue path stays inside the exchange set: relative, with no `..` or `.` step, no
+ * empty step and no drive letter or other `:`. Anything else is never handed to `readFile`.
+ */
+function insideExchangeSet(path: string): boolean {
+    return path !== '' && path.split('/').every((step) => step !== '' && step !== '.' && step !== '..' && !step.includes(':'));
 }
 
 /** What an exchange set's check found: the catalogue's signature, and each dataset's. */
@@ -502,6 +526,10 @@ export async function verifyS100ExchangeSet(options: {
     const datasets: S100ExchangeSetVerification['datasets'] = [];
     for (const d of catalogue.datasets) {
         if (d.cancelled || (options.products && !options.products.includes(d.product ?? ''))) continue;
+        if (!insideExchangeSet(d.path)) {
+            datasets.push({path: d.path, product: d.product, result: {outcome: 'error', detail: 'the path leaves the exchange set'}});
+            continue;
+        }
         const data = await readFile(d.path);
         let result: S100SignatureResult;
         if (!data) result = {outcome: 'error', detail: 'the file is missing'};

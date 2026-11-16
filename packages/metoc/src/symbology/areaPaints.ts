@@ -313,10 +313,15 @@ export function bandAxis(ring: readonly P[]): {centre: P; axis: P; normal: P; fr
     return {centre: c, axis, normal, from: Math.min(...ts), to: Math.max(...ts)};
 }
 
-/** Where the line through `p` along `dir` crosses the ring, as distances along `dir`. */
-function crossings(p: P, dir: P, ring: readonly P[]): number[] {
+/**
+ * Where the line through `p` along `dir` crosses the ring, as distances along `dir`: of the edges
+ * `edges` names (each index i the edge from ring[i] to ring[i + 1]), or all of them.
+ */
+function crossings(p: P, dir: P, ring: readonly P[], edges?: readonly number[]): number[] {
     const out: number[] = [];
-    for (let i = 0; i < ring.length - 1; i++) {
+    const count = edges ? edges.length : ring.length - 1;
+    for (let k = 0; k < count; k++) {
+        const i = edges ? edges[k] : k;
         const a = ring[i];
         const b = ring[i + 1];
         const ex = b[0] - a[0];
@@ -344,10 +349,25 @@ const convergenceZone: Painter = (input) => {
     const samples: {t: number; top: P; bottom: P}[] = [];
     const inset = Math.min(stepM, (to - from) / 4);
     const steps = Math.max(2, Math.ceil((to - from - 2 * inset) / stepM));
+    // The samples run along the axis, so the edges a sample's cross-section can meet are swept in
+    // order of where they start along it, with a margin far beyond rounding: each sample tests the
+    // few edges around it, not the whole ring, and finds the same crossings.
+    const along = (q: P) => (q[0] - centre[0]) * axis[0] + (q[1] - centre[1]) * axis[1];
+    const margin = (to - from) * 1e-6 + 1e-6;
+    const spans = ring.slice(0, -1).map((a, i) => {
+        const u = along(a);
+        const v = along(ring[i + 1]);
+        return {i, lo: Math.min(u, v) - margin, hi: Math.max(u, v) + margin};
+    });
+    spans.sort((x, y) => x.lo - y.lo);
+    let next = 0;
+    let active: typeof spans = [];
     for (let i = 0; i <= steps; i++) {
         const t = from + inset + ((to - from - 2 * inset) * i) / steps;
         const p: P = [centre[0] + axis[0] * t, centre[1] + axis[1] * t];
-        const ks = crossings(p, normal, ring);
+        while (next < spans.length && spans[next].lo <= t) active.push(spans[next++]);
+        active = active.filter((e) => e.hi >= t);
+        const ks = crossings(p, normal, ring, active.map((e) => e.i));
         if (ks.length < 2) continue;
         const hi = Math.max(...ks);
         const lo = Math.min(...ks);

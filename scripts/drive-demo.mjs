@@ -319,7 +319,7 @@ for (const engine of tilting) {
         return {id: f?.id, px, lift: m.engine().view.pointLiftPx?.() ?? 0};
     });
     check(placed.id && placed.lift === 48, `${engine}: a point symbol stands on a 48 px leader line (${JSON.stringify(placed)})`);
-    const leaders = () => page.evaluate(() => window.__metoc.engine().host.map.querySourceFeatures('metoc-graphics', {filter: ['==', ['get', 'kind'], 'leader']}).length);
+    const leaders = () => page.evaluate(() => window.__metoc.engine().host.map.querySourceFeatures('metoc-points', {filter: ['==', ['get', 'kind'], 'leader']}).length);
     if (engine === 'maplibre3d') check((await leaders()) >= 1, `${engine}: drawn as one upright picture on its leader line (${await leaders()})`);
     // The Settings switch lays them on the ground and stands them up again.
     await page.click('#settings-toggle');

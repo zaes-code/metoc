@@ -196,6 +196,17 @@ describe('verifyS100Signature', () => {
         expect((await verify(DATASET, {value: sig, certificateRef: 'NOPE'})).outcome).toBe('certificate-not-found');
         expect((await verify(DATASET, {value: Uint8Array.of(1, 2, 3)})).outcome).toBe('error');
     });
+
+    it('finds the Scheme Administrator\'s own signature whichever trusted root it is', async () => {
+        const other = (await subtle.generateKey(P384, true, ['sign', 'verify'])) as CryptoKeyPair;
+        const otherRoot = await certificate('Another Administrator', 'Another Administrator', other, other.privateKey);
+        const sig = await signDer(sa.privateKey, DATASET);
+        const bySa = (roots: Uint8Array[]) => verifyS100Signature(DATASET, {kind: 'data', id: 's', certificateRef: 'TEST-SA', dataStatus: 'unencrypted', value: sig}, {certificates: [], schemeAdministratorId: 'TEST-SA', trustedRoots: roots, now: NOW});
+        expect(await bySa([saCert])).toEqual({outcome: 'valid'});
+        expect(await bySa([otherRoot, saCert])).toEqual({outcome: 'valid'});
+        expect((await bySa([otherRoot])).outcome).toBe('invalid');
+        expect((await bySa([])).outcome).toBe('certificate-not-found');
+    });
 });
 
 describe('verifyS100ExchangeSet', () => {
@@ -220,5 +231,17 @@ describe('verifyS100ExchangeSet', () => {
         // No CATALOG.SIGN: never valid.
         const unsigned = await verifyS100ExchangeSet({readFile: async (p) => (p === 'CATALOG.SIGN' ? undefined : files[p]), trustedRoots: [saCert], now: NOW});
         expect(unsigned.catalogue.outcome).toBe('untrusted');
+    });
+
+    it('never reads a dataset whose catalogue path leaves the exchange set', async () => {
+        const read: string[] = [];
+        for (const [filePath, fileName] of [['..\\..\\Users', 'secret.txt'], ['', 'C:\\Windows\\win.ini'], ['a/../..', 'b.gml'], ['./x', 'y.gml']]) {
+            const xml = catalogueXml(Uint8Array.of(1)).replace('<S100XC:fileName>412XX00TEST.GML</S100XC:fileName>', `<S100XC:fileName>${fileName}</S100XC:fileName>`).replace('\\S-412\\DATASET_FILES', filePath);
+            const files: Record<string, Uint8Array> = {'CATALOG.XML': new TextEncoder().encode(xml)};
+            const result = await verifyS100ExchangeSet({readFile: async (p) => (read.push(p), files[p]), trustedRoots: [saCert], now: NOW});
+            expect(result.datasets.map((d) => d.result)).toEqual([{outcome: 'error', detail: 'the path leaves the exchange set'}]);
+            expect(result.allValid).toBe(false);
+        }
+        expect(read.filter((p) => p !== 'CATALOG.XML' && p !== 'CATALOG.SIGN')).toEqual([]);
     });
 });

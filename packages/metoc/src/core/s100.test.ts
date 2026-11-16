@@ -134,6 +134,21 @@ describe('parseXml', () => {
         expect(() => parseXml('<a>')).toThrow();
         expect(() => parseXml('not xml')).toThrow();
     });
+
+    it('reads attributes as before, quoted either way, around junk tokens', () => {
+        const doc = parseXml(`<a one = "1" two='2' junk three="x y" four=bare five="5"b="6" xmlns:q="ns"/>`);
+        expect(doc.attrs).toEqual({one: '1', two: '2', three: 'x y', five: '5', b: '6'});
+    });
+
+    it('reads a start tag with a long token in linear time', () => {
+        const t = performance.now();
+        parseXml(`<a ${'b'.repeat(200_000)} c="1"/>`);
+        expect(performance.now() - t).toBeLessThan(1000);
+    });
+
+    it('decodes only its own entities, never an object property', () => {
+        expect(parseXml('<a>&constructor; &__proto__; &toString;</a>').text).toBe('&constructor; &__proto__; &toString;');
+    });
 });
 
 const surface = (posList: string, interior = '') =>
@@ -149,6 +164,22 @@ const dataset = (product: string, members: string) => `<?xml version="1.0" encod
 </S412:Dataset>`;
 
 const RING = '60.0 -32.0 60.2 -32.0 60.2 -32.3 60.0 -32.3 60.0 -32.0';
+
+describe('readS100Dataset: hostile input', () => {
+    const warning = (posList: string, extra = '') => `<S412:ThunderstormWarning gml:id="T">${extra}${surface(posList)}</S412:ThunderstormWarning>`;
+
+    it('reads a position only with an srsDimension of 2 to 4, and two otherwise', () => {
+        const ring = (dims: string) => readS100Dataset(dataset('S-412', warning(RING).replace('<gml:posList>', `<gml:posList srsDimension="${dims}">`))).features[0];
+        for (const dims of ['-2', '0', '1', '0.5', '1e-300', 'x']) expect(drawnPoints(ring(dims)), dims).toEqual([[-32.0, 60.0], [-32.0, 60.2], [-32.3, 60.2], [-32.3, 60.0]]);
+        const three = readS100Dataset(dataset('S-412', warning('60 -32 5 60.2 -32 5 60.2 -32.3 5 60 -32 5').replace('<gml:posList>', '<gml:posList srsDimension="3">'))).features[0];
+        expect(drawnPoints(three)).toEqual([[-32, 60], [-32, 60.2], [-32.3, 60.2]]);
+    });
+
+    it('keeps an attribute named like an object property as its own value', () => {
+        const f = readS100Dataset(dataset('S-412', warning(RING, '<S412:constructor>5</S412:constructor>'))).features[0];
+        expect(f.properties.metoc.s100?.constructor).toBe(5);
+    });
+});
 
 describe('readS100Dataset: S-412', () => {
     const provider = `<S412:DataProvider gml:id="ID0"><S412:issuingService><S412:issuingServiceName><S412:information><S412:language>eng</S412:language><S412:text>Met Service</S412:text></S412:information></S412:issuingServiceName></S412:issuingService></S412:DataProvider>`;
@@ -293,5 +324,97 @@ describe('readS100Dataset: S-411', () => {
         expect(r.skipped).toEqual([]);
         expect(r.features.map((f) => f.properties.metoc.name)).toEqual([N.S411IceKeel, N.S411GroundedHummock, N.S411StripsAndPatches, N.S411IceLeadPoint, N.S411IceFracturePoint, N.S411StageOfMelt]);
         expect(r.features[5].properties.metoc.value).toBe('2');
+    });
+});
+
+describe('readS100Dataset: multi-part geometry and members outside a wrapper', () => {
+    const RING2 = '61.0 -30.0 61.2 -30.0 61.2 -30.3 61.0 -30.3 61.0 -30.0';
+    const polygon = (posList: string) => `<gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>${posList}</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon>`;
+    const warningWith = (geometry: string, id = 'T') => `<S412:ThunderstormWarning gml:id="${id}"><S412:geometry>${geometry}</S412:geometry></S412:ThunderstormWarning>`;
+    const first = [[-32.0, 60.0], [-32.0, 60.2], [-32.3, 60.2], [-32.3, 60.0]];
+    const second = [[-30.0, 61.0], [-30.0, 61.2], [-30.3, 61.2], [-30.3, 61.0]];
+
+    it('draws every surface of a MultiSurface, and says it split the feature', () => {
+        const multi = `<S100:surfaceProperty><gml:MultiSurface><gml:surfaceMember>${polygon(RING)}</gml:surfaceMember><gml:surfaceMember>${polygon(RING2)}</gml:surfaceMember></gml:MultiSurface></S100:surfaceProperty>`;
+        const r = readS100Dataset(dataset('S-412', warningWith(multi)));
+        expect(r.skipped).toEqual([]);
+        expect(r.features.map(drawnPoints)).toEqual([first, second]);
+        expect(r.features.map((f) => f.properties.metoc.s100?.id)).toEqual(['T', 'T']);
+        expect(r.warnings).toEqual(['T: 2 surfaces, drawn as 2 areas.']);
+    });
+
+    it('draws every patch of a Surface', () => {
+        const patch = (posList: string) => `<gml:PolygonPatch><gml:exterior><gml:LinearRing><gml:posList>${posList}</gml:posList></gml:LinearRing></gml:exterior></gml:PolygonPatch>`;
+        const r = readS100Dataset(dataset('S-412', warningWith(`<S100:surfaceProperty><S100:Surface gml:id="s"><gml:patches>${patch(RING)}${patch(RING2)}</gml:patches></S100:Surface></S100:surfaceProperty>`)));
+        expect(r.features.map(drawnPoints)).toEqual([first, second]);
+    });
+
+    it('joins the segments of a curve and the curve members of a ring', () => {
+        const ring = `<S100:surfaceProperty><S100:Surface gml:id="s"><gml:patches><gml:PolygonPatch><gml:exterior><gml:Ring>
+            <gml:curveMember><gml:Curve gml:id="c1"><gml:segments><gml:LineStringSegment><gml:posList>60.0 -32.0 60.2 -32.0</gml:posList></gml:LineStringSegment><gml:LineStringSegment><gml:posList>60.2 -32.0 60.2 -32.3</gml:posList></gml:LineStringSegment></gml:segments></gml:Curve></gml:curveMember>
+            <gml:curveMember><gml:Curve gml:id="c2"><gml:segments><gml:LineStringSegment><gml:posList>60.2 -32.3 60.0 -32.3 60.0 -32.0</gml:posList></gml:LineStringSegment></gml:segments></gml:Curve></gml:curveMember>
+            </gml:Ring></gml:exterior></gml:PolygonPatch></gml:patches></S100:Surface></S100:surfaceProperty>`;
+        const r = readS100Dataset(dataset('S-412', warningWith(ring)));
+        expect(r.skipped).toEqual([]);
+        expect(r.features.map(drawnPoints)).toEqual([first]);
+    });
+
+    it('reads a curve member given by reference, reversed when its orientation is "-"', () => {
+        const curve = (id: string, posList: string) => `<S100:Curve gml:id="${id}"><gml:segments><gml:LineStringSegment><gml:posList>${posList}</gml:posList></gml:LineStringSegment></gml:segments></S100:Curve>`;
+        const ring = `<S100:surfaceProperty><S100:Surface gml:id="s"><gml:patches><gml:PolygonPatch><gml:exterior><gml:Ring>
+            <gml:curveMember xlink:href="#c1"/>
+            <gml:curveMember><gml:OrientableCurve orientation="-"><gml:baseCurve xlink:href="#c2"/></gml:OrientableCurve></gml:curveMember>
+            </gml:Ring></gml:exterior></gml:PolygonPatch></gml:patches></S100:Surface></S100:surfaceProperty>`;
+        const members = curve('c1', '60.0 -32.0 60.2 -32.0 60.2 -32.3') + curve('c2', '60.0 -32.0 60.0 -32.3 60.2 -32.3') + warningWith(ring);
+        const r = readS100Dataset(dataset('S-412', members));
+        expect(r.skipped).toEqual([]);
+        expect(r.features.map(drawnPoints)).toEqual([first]);
+    });
+
+    it('says which reference it could not find', () => {
+        const ring = `<S100:surfaceProperty><S100:Surface gml:id="s"><gml:patches><gml:PolygonPatch><gml:exterior><gml:Ring><gml:curveMember xlink:href="#nowhere"/></gml:Ring></gml:exterior></gml:PolygonPatch></gml:patches></S100:Surface></S100:surfaceProperty>`;
+        const r = readS100Dataset(dataset('S-412', warningWith(ring)));
+        expect(r.features).toEqual([]);
+        expect(r.skipped).toEqual([{id: 'T', feature: 'ThunderstormWarning', reason: 'its geometry refers to #nowhere, which the dataset does not hold'}]);
+    });
+
+    it('gives up on geometry that refers to itself, and says so', () => {
+        const loop = `<S100:Curve gml:id="c1"><gml:segments><gml:LineStringSegment xlink:href="#c1"/></gml:segments></S100:Curve>`;
+        const edge = `<IceEdge gml:id="E"><geometry><S100:curveProperty xlink:href="#c1"/></geometry></IceEdge>`;
+        const r = readS100Dataset(dataset('S-411', loop + edge));
+        expect(r.features).toEqual([]);
+        expect(r.skipped).toEqual([{id: 'E', feature: 'IceEdge', reason: 'its geometry nests or refers more than 256 levels deep (a reference loop?)'}]);
+    });
+
+    it('draws every line of a MultiCurve and every point of a MultiPoint', () => {
+        const line = (posList: string) => `<gml:curveMember><gml:LineString><gml:posList>${posList}</gml:posList></gml:LineString></gml:curveMember>`;
+        const edge = `<IceEdge gml:id="E"><geometry><S100:curveProperty><gml:MultiCurve>${line('70 -40 70.5 -39')}${line('72 -40 72.5 -39')}</gml:MultiCurve></S100:curveProperty></geometry></IceEdge>`;
+        const pos = (p: string) => `<gml:pointMember><gml:Point><gml:pos>${p}</gml:pos></gml:Point></gml:pointMember>`;
+        const floebergs = `<Floeberg gml:id="F"><geometry><S100:pointProperty><gml:MultiPoint>${pos('70 -40')}${pos('71 -41')}</gml:MultiPoint></S100:pointProperty></geometry></Floeberg>`;
+        const r = readS100Dataset(dataset('S-411', edge + floebergs));
+        expect(r.skipped).toEqual([]);
+        expect(r.features.map((f) => [f.properties.metoc.name, drawnPoints(f)])).toEqual([
+            [N.S411IceEdge, [[-40, 70], [-39, 70.5]]],
+            [N.S411IceEdge, [[-40, 72], [-39, 72.5]]],
+            [N.Floeberg, [[-40, 70]]],
+            [N.Floeberg, [[-41, 71]]],
+        ]);
+        expect(r.warnings).toEqual(['E: 2 curves, drawn as 2 lines.', 'F: 2 points, drawn as 2 points.']);
+    });
+
+    it('lists a part too short to draw, and draws the rest', () => {
+        const multi = `<S100:surfaceProperty><gml:MultiSurface><gml:surfaceMember>${polygon(RING)}</gml:surfaceMember><gml:surfaceMember>${polygon('61 -30 61.2 -30 61 -30')}</gml:surfaceMember></gml:MultiSurface></S100:surfaceProperty>`;
+        const r = readS100Dataset(dataset('S-412', warningWith(multi)));
+        expect(r.features.map(drawnPoints)).toEqual([first]);
+        expect(r.skipped).toEqual([{id: 'T', feature: 'ThunderstormWarning', reason: 'part 2 of 2: 2 point(s), fewer than an area needs'}]);
+    });
+
+    it('reads features placed directly under the dataset, beside the wrapped ones', () => {
+        const direct = warningWith(`<S100:surfaceProperty>${polygon(RING2)}</S100:surfaceProperty>`, 'B') + '<S412:Mystery gml:id="M"/>';
+        const xml = dataset('S-412', warningWith(`<S100:surfaceProperty>${polygon(RING)}</S100:surfaceProperty>`, 'A')).replace('</S412:Dataset>', `${direct}</S412:Dataset>`);
+        const r = readS100Dataset(xml);
+        expect(r.features.map((f) => f.properties.metoc.s100?.id)).toEqual(['A', 'B']);
+        expect(r.features.map(drawnPoints)).toEqual([first, second]);
+        expect(r.skipped).toEqual([{id: 'M', feature: 'Mystery', reason: 'no geometry'}]);
     });
 });

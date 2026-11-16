@@ -32,14 +32,30 @@ export function metocSidc(name: MetocGraphicName): string | undefined {
 }
 
 /**
+ * Version digits whose editions still have Wind Plot, 45/140200 (Table A-I: `10` MIL-STD-2525D, `11`
+ * MIL-STD-2525D(1), both in 20 or 30 digits, and `13` the base MIL-STD-2525E, in 30). 2525D lists it
+ * in Table A-XL. SCP 23-045-DS, which removed it, is incorporated by 2525E Change 1 (version `15`);
+ * version 13 is read as the barb because the base 2525E predates that SCP, which has not been
+ * confirmed against the base 2525E's own text.
+ */
+const WIND_PLOT_VERSIONS = new Set(['10', '11', '13']);
+const WIND_PLOT_ENTITY = '140200';
+
+/**
  * The graphic a SIDC names, or `undefined`. Accepts the 20-digit 2525D form and the 30-digit
  * 2525E form, any version, and ignores the identity and modifier positions: a METOC line is
- * named by its symbol set and entity code alone.
+ * named by its symbol set and entity code alone. A Wind Plot (version `10` or `11`, or a 30-digit
+ * base 2525E code, version `13`; set 45, entity 140200) reads as the wind barb, which draws its
+ * Point5 rule; no code is ever written for the barb, since 2525E Change 1 gives it none.
  */
 export function metocGraphicFromSidc(sidc: string): MetocGraphicName | undefined {
     const digits = sidc.trim();
     if (!/^\d{20}(\d{10})?$/.test(digits)) return undefined;
     const set = digits.slice(4, 6);
     if (set !== '45' && set !== '46') return undefined;
-    return metocGraphicByEntityCode(digits.slice(10, 16), Number(set) as 45 | 46);
+    const entity = digits.slice(10, 16);
+    const version = digits.slice(0, 2);
+    const windPlotVersion = WIND_PLOT_VERSIONS.has(version) && (version !== '13' || digits.length === 30);
+    if (set === '45' && entity === WIND_PLOT_ENTITY && windPlotVersion) return MetocGraphicName.WindBarb;
+    return metocGraphicByEntityCode(entity, Number(set) as 45 | 46);
 }

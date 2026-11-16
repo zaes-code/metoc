@@ -53,6 +53,20 @@ describe('wind barbs (Table M-I)', () => {
         expect(barbCounts(undefined)).toBeNull();
     });
 
+    it('draws 1-2 kt as the shaft alone and 3-4 kt as a half barb, as the WMO station model does', () => {
+        // Table M-I covers 1-2 kt (shaft alone) and 5 kt and up (nearest 5); 3-4 kt round to 5.
+        expect(barbCounts(1)).toEqual({pennants: 0, barbs: 0, halves: 0});
+        expect(barbCounts(2)).toEqual({pennants: 0, barbs: 0, halves: 0});
+        expect(barbCounts(3)).toEqual({pennants: 0, barbs: 0, halves: 1});
+        expect(barbCounts(4)).toEqual({pennants: 0, barbs: 0, halves: 1});
+        expect(barbCounts(7)).toEqual({pennants: 0, barbs: 0, halves: 1});
+        expect(barbCounts(8)).toEqual({pennants: 0, barbs: 1, halves: 0});
+        expect(barbCounts(-3)).toEqual({pennants: 0, barbs: 0, halves: 0});
+        const strokes = (speed: number) => paint(N.WindBarb, {windDirection: 0, windSpeed: speed}, [0, 0]).filter((p) => p.geometry.type === 'LineString').length;
+        expect(strokes(4)).toBe(strokes(5));
+        expect(strokes(4)).toBe(strokes(2) + 1);
+    });
+
     const shaft = (paints: Paint[]) => paints.find((p) => p.role === 'line')!.geometry.coordinates as unknown as P[];
 
     it('points the shaft where the wind comes from, to the nearest 10 degrees, screen-sized', () => {

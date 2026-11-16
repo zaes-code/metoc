@@ -144,6 +144,21 @@ describe('SIDCs', () => {
         expect(metocGraphicFromSidc('10034500001103010000')).toBe(MetocGraphicName.ColdFront);
     });
 
+    it('reads a 2525D or base 2525E Wind Plot (45/140200) as the wind barb, not a 2525E Change 1 one', () => {
+        // 2525D Table A-XL lists Wind Plot 140200; 2525E Change 1 removed it (SCP 23-045-DS).
+        expect(metocGraphicFromSidc('10004500001402000000')).toBe(MetocGraphicName.WindBarb);
+        expect(metocGraphicFromSidc('11004500001402000000')).toBe(MetocGraphicName.WindBarb);
+        expect(metocGraphicFromSidc('100045000014020000000000000000')).toBe(MetocGraphicName.WindBarb);
+        // Base 2525E (version 13) predates SCP 23-045-DS, which Change 1 incorporates: read as the barb.
+        expect(metocGraphicFromSidc('130045000014020000000000000000')).toBe(MetocGraphicName.WindBarb);
+        expect(metocGraphicFromSidc('130045000014020000000000000000'.slice(0, 20))).toBeUndefined();
+        // 2525E(1) (15) has no 140200, nor do the APP-6 versions (12, 14, 16), and set 46 never had one.
+        for (const v of ['12', '14', '15', '16']) expect(metocGraphicFromSidc(`${v}0045000014020000000000000000`), v).toBeUndefined();
+        expect(metocGraphicFromSidc('10004600001402000000')).toBeUndefined();
+        // Writing stays code-less: the barb is drawn from 2525E, which gives it no code.
+        expect(metocSidc(MetocGraphicName.WindBarb)).toBeUndefined();
+    });
+
     it('rejects other symbol sets and malformed codes', () => {
         expect(metocGraphicFromSidc('10032500001103010000')).toBeUndefined();
         expect(metocGraphicFromSidc('1003450000110301')).toBeUndefined();
