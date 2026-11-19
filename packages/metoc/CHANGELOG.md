@@ -14,6 +14,15 @@ the npm publish dates — when a version actually became installable.
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-11-19
+
+Requires `@zaes/symbology-engine` and `@zaes/symbology-editor` 0.5.0.
+
+### Fixed
+
+- **No light line where two pieces of a symbol meet** in MapLibre point images and Cesium billboards: the
+  engine now fills touching pieces of one color as one shape.
+
 ## [0.3.0] — 2026-11-16
 
 ### Added
